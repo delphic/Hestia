@@ -1,0 +1,172 @@
+Hestia
+======
+
+Can use Fury for class example.
+
+Build:
+------
+browserify core/hestia.js -o hestia.js
+
+Features:
+---------
+Outstanding: SFX, Music, Map
+Present: Rendering, Input
+Completed: 
+
+Myopia:
+-------
+Test Game
+SFX
+Multiple Fonts
+Write Directly to Canvas ImageData
+
+Concerns:
+---------
+Do we want the ability to renderer clipped Text? (useful for masking but showing some of it)
+Hestia has a global canvas
+Do we want camera position? Or do we leave that to game code?
+No palette enforcement on spritesheet as it's just an image.
+Tooling questions - can not use filesystem... either need a node server, or electron app.
+How fantasy console is this? Do I want to load game code from a bootstrap?
+Performance - How do we profile? How fast does it need to be? (Fast enough to support Nuclear Throne levels of insanity?)
+
+Demo Games:
+-----------
+Robot Pokémon Battler / FTL style game (as pokemon is pocket monsters,'Pixbots' as in pixel robots?)
+>> Pixel Dungeon / Crypt of the NecroDancer
+Nuclear Throne / PSO / Alien Swarm
+
+Indexed Image Formats:
+----------------------
+aseprite - https://github.com/aseprite/aseprite/blob/master/docs/ase-file-specs.md
+StarCraft - https://github.com/delphic/Kirke/blob/master/Main.cs
+
+Comments from Experiment:
+------------------------- 
+// Half HD would be: 960,540
+// 320x180 scales to switch at 4x and 1080 at 6x
+// 640x360 scales to switch at 2x and 1080 at 3x
+
+// Question: can you draw other canvas images onto 2D canvas?
+// You can with drawImage but if you scale it, it gets anti-aliased
+// Question: is there any benefit to doing so? 
+// i.e. is rendering the canvas faster than just drawing it fresh?
+// Don't know yet would have to run a test, it'd be good to have a real test case though
+
+Scratch Pad:
+------------
+
+// Sprite Sheet Test Code
+var spriteIdx = 4, spriteX = 0, spriteY = 0;
+var sprites = [0,1,2,3,16,17,18,19,20,21,32,33,34,35];
+
+var spriteTestUpdate = function() {
+	if(Hestia.button(0)) {
+		spriteX -= 1;
+	}
+	if (Hestia.button(1)) {
+		spriteX += 1;
+	}
+	if (Hestia.button(2)) {
+		spriteY -= 1;
+	}
+	if (Hestia.button(3)) {
+		spriteY += 1;
+	}
+	if (Hestia.buttonUp(4)) {
+		spriteIdx = (spriteIdx + sprites.length - 1) % sprites.length;
+	}
+	if (Hestia.buttonUp(5)) {
+		spriteIdx = (spriteIdx + 1) % sprites.length;
+	}
+};
+
+var spriteTestDraw = function() {
+	Hestia.drawSprite(spriteIdx, spriteX, spriteY);
+};
+
+// TextBox Class
+var TextBox = (function(){
+	var proto = {
+		padding: 3,
+		spacing: 1,
+		index: 0,
+		select: false,
+		charWidth: 4,	// Technically this comes from font but only one font atm
+		charHeight: 6,	// ^^ as above
+		color: 0,
+		bgColor: 21,
+		draw: function() {
+			var indent = 0;
+			if (this.select) {
+				indent = 3;
+			}
+
+			var x = this.x, y = this.y, w = this.w, h = this.h,
+				padding = this.padding, spacing = this.spacing, lines = this.lines,
+				select = this.select, index = this.index, c = this.color, charHeight = this.charHeight;
+
+			Hestia.fillRect(x+1,y+1,w-2,h-2, this.bgColor);
+			Hestia.drawRect(x, y, w, h, c);	
+			
+			for(var i = 0; i < lines.length; i++) {
+				Hestia.drawText(lines[i], x+padding + indent, y + padding + (spacing + charHeight)*i, c);
+				
+				if (select && i == index) {
+					var px = x + padding;
+					var py = y + padding + (charHeight + spacing) * i + 2;
+					Hestia.setPixel(px, py, c);
+					Hestia.setPixel(px+1, py, c);
+					Hestia.setPixel(px, py+1, c);
+					Hestia.setPixel(px, py-1, c);
+				}
+			}		
+		},
+		update: function() {
+			if (this.select) {
+				if (Hestia.buttonUp(2)) {
+					this.index = (this.index - 1 + this.lines.length) % this.lines.length;
+				}
+				if (Hestia.buttonUp(3)) {
+					this.index = (this.index + 1) % this.lines.length;
+				}
+				// Note ^^ this cycles, might want that to be an option
+			}
+		},
+		recalculateDimensions: function() {
+			this.w = this.calculateMinWidth();
+			this.h = this.calculateMinHeight();
+		},
+		calculateMinWidth: function() {
+			var indent = 0;
+			if (this.select) {
+				indent = 3;
+			}
+			var maxWidth = 0;
+			for(var i = 0; i < this.lines.length; i++) {
+				if (this.lines[i].length > maxWidth) {
+					maxWidth = this.lines[i].length;
+				}
+			}			
+			return this.charWidth * maxWidth + 2 * this.padding + indent;
+		},
+		calculateMinHeight: function() {
+			return 2 * this.padding + this.lines.length*(this.charHeight+this.spacing) - (this.spacing+1);
+		}
+	};
+
+	// Could probably take parameters object as it's a create
+	var create = function(x, y, lines, color, bgColor, select) {
+		var textBox = Object.create(proto);
+		textBox.x = x;
+		textBox.y = y;
+		textBox.lines = lines;
+		textBox.color = color;
+		textBox.bgColor = bgColor;
+		textBox.select = select;
+		textBox.recalculateDimensions();
+		return textBox;
+	};
+
+	return { create: create };
+})();
