@@ -55,7 +55,7 @@ var Input = module.exports = function() {
 
 	exports.getMousePosition = function() {
 		return mousePos;
-	}
+	};
 
 	exports.getMouseButton = function(btn) {
 		return mousePressed[btn];
@@ -67,7 +67,7 @@ var Input = module.exports = function() {
 
 	exports.getMouseButtonUp = function(btn) {
 		return mouseUp[btn];
-	}
+	};
 
 	var handleMouseMove = function(event) {
 		var canvas = event.target;

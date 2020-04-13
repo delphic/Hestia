@@ -1,6 +1,6 @@
 // PICO-8 Inspired HTML5 Canvas Renderer
-
-Hestia = {};
+"use strict";
+var Hestia = {};
 
 var canvas, ctx, palette, paletteIndex, spriteSheet;
 var tickRate, ticks, lastTime, elapsed, pause, lockCount = 0;
@@ -31,7 +31,7 @@ Hestia.init = function(config) {
 	// Set Canvas Size
 	canvas.width = config.width;
 	canvas.height = config.height;
-	canvas.setAttribute("style", "width:" + config.width*config.pixelRatio/window.devicePixelRatio + "px; height:" + config.height * config.pixelRatio / window.devicePixelRatio + "px;");
+	canvas.setAttribute("style", "width:" + config.width * config.pixelRatio / window.devicePixelRatio + "px; height:" + config.height * config.pixelRatio / window.devicePixelRatio + "px;");
 
 	// Set Pallette
 	if (config.palette) {
@@ -213,9 +213,9 @@ Hestia.palette = function() {
 
 // Private Methods
 var tick = function() {
-	if (lockCount == 0) {
+	if (lockCount === 0) {
 		elapsed = (Date.now() - lastTime) / 1000;
-		if (ticks == 0 || elapsed > 1 / tickRate) {
+		if (ticks === 0 || elapsed > 1 / tickRate) {
 			lastTime = Date.now();
 			ticks++; 
 
