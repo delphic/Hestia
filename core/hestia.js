@@ -15,7 +15,7 @@ var input = require("./input.js");
 // Program Flow
 
 // init - expected config parameters:
-// 'canvas' the  canvas html element to use with Hestia
+// 'canvas' the canvas html element to use with Hestia
 // 'width' canvas width in pixels, 
 // 'height' canvas height in pixels 
 // 'pixelRatio' pixel display ratio

@@ -1,14 +1,19 @@
+//var textBox;
+
 var init = function() {
+    // textBox = TextBox.create(48, 128, ["Lena", "Also Lena"], 4, 21, true);
 };
 
 var update = function() {
-
-
+    // textBox.update();
 };
+
 var draw = function() {
 	Hestia.clear(1);
 	drawPalette(0,0,4);
 	Hestia.drawSprite(0,48,48);
+	// textBox.draw();
+	
 	drawCursor();
 };
 
@@ -124,6 +129,7 @@ var TextBox = (function(){
 				if (Hestia.buttonUp(3)) {
 					this.index = (this.index + 1) % this.lines.length;
 				}
+				// TODO: Need a callback for selecting an option with a button!
 			}
 		},
 		recalculateDimensions: function() {
