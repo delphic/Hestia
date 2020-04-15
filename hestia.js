@@ -108,9 +108,7 @@ Hestia = {};
 var canvas, ctx, palette, paletteIndex, spriteSheet, imageData;
 var tickRate, ticks, lastTime, elapsed, pause, lockCount = 0;
 var currentFont;
-
-var useCtx = false, useCtxClear = false; // Switch between image data method and ctx.fillRect
-var paletteColors, paletteSprites = [];
+var palettiseCanvas, paletteSprites = []; // sprites by index in palette indices
 
 var fonts = require("./fonts.js");
 var input = require("./input.js");
@@ -237,10 +235,9 @@ var loadSpriteSheet = Hestia.loadSpriteSheet = function(path, spriteSize) {
 	}).then(function(blob) {
 		spriteSheet.src = URL.createObjectURL(blob);
 		window.setTimeout(function(){
-		    // Yup that seems to be the issue - TODO - less hack way maybe!
-    		palettiseSprite(0); // TODO: Palettise as many as there are?
+    		palettiseSprite(0); // TODO: Palettise entire sprite sheet
     		lockCount -= 1;
-		}, 1000); // HACK to see if the issue is setting src is async
+		}, 1000); // HACK setting src appears to be async
 	}).catch(function(error) {
 		console.log("Load Sprite Sheet Failed: " + error.message);
 		lockCount -= 1;
@@ -253,17 +250,7 @@ var loadPalette = Hestia.loadPalette = function(path) {
 		return response.json();
 	}).then(function(json) {
 		palette = json.palette;
-		
 	    setPaletteIndex(0);
-		paletteColors = [];
-		for(let i = 0, l = palette.length; i < l; i++) {
-		    // TODO: profile difference between typed array and not 
-		    paletteColors[i] = palette[i].replace("rgb(", "").replace(")", "").split(",");
-		    for (let j = 0; j < 3; j++) {
-		        paletteColors[i][j] = parseInt(paletteColors[i][j], 10);
-		    }
-		}
-		
 		lockCount -= 1;
 	}).catch(function(error) { 
 		console.log("Load Palette Failed: " + error.message);
@@ -273,83 +260,42 @@ var loadPalette = Hestia.loadPalette = function(path) {
 
 // Drawing
 
-// TODO: Profile performance difference between ctx.drawRect and imageData
 var setPixel = Hestia.setPixel = function(x, y, c) {
-    if (useCtx) {
-        setPaletteIndex(c);
-        ctx.fillRect(x,y,1,1);
-    } else {
-    	let i = y * (imageData.width * 4) + x * 4;
-    	imageData.data[i] = paletteColors[c][0];
-    	imageData.data[i+1] = paletteColors[c][1];
-    	imageData.data[i+2] = paletteColors[c][2];
-    	imageData.data[i+3] = 255;        
-    }
+    setPaletteIndex(c);
+    ctx.fillRect(x,y,1,1);
 };
 
 var fillRect = Hestia.fillRect = function(x, y, w, h, c) {
-    if (useCtx) {
-        setPaletteIndex(c);
-        ctx.fillRect(x,y,w,h);
-    } else {
-	    for (let j = y; j < y + h; j++) {
-        	for (let i = x; i < x + w; i++) {
-    	        setPixel(i, j, c);
-    	        // We could be smarter about this, just enumerate the row ourselves in chunks of 4
-    	    }
-    	}        
-    }
+    setPaletteIndex(c);
+    ctx.fillRect(x,y,w,h);
 }; 
 
 var drawRect = Hestia.drawRect = function(x, y, w, h, c) {
-	fillRect(x, y, w, 1, c);
-	fillRect(x, y, 1, h, c);
-	fillRect(x, y + h - 1, w, 1, c);
-	fillRect(x + w - 1, y, 1, h, c);
+    setPaletteIndex(c);
+	ctx.fillRect(x, y, w, 1);
+	ctx.fillRect(x, y, 1, h);
+	ctx.fillRect(x, y + h - 1, w, 1);
+	ctx.fillRect(x + w - 1, y, 1, h);
 };
 
 var drawSprite = Hestia.drawSprite = function(idx, x, y, w, h) {
-    if (useCtx) {
-    	if (!w) { w = 1; }
-    	if (!h) { h = 1; }
-    	let s = spriteSheet.spriteSize;
-    	let sx = (idx*s)%spriteSheet.width, 
-    		sy = s * Math.floor((idx*s)/spriteSheet.width),
-    		sw = s*w, sh = s*h;
-    	ctx.drawImage(spriteSheet, sx, sy, sw, sh, x, y, sw, sh);
-    	// Note undefined behaviour edge wrapping (or lack there of)
-    } else {
-        // Note image data drawing does not support w, h
-        let s = spriteSheet.spriteSize;
-        let spriteIndex = 0;
-        for (let j = 0; j < s; j++) {
-            for (let i = 0; i < s; i++) {
-                let c = paletteSprites[idx][spriteIndex];
-                if (c !== 0) { // TODO: Configurable Transparency?
-                    setPixel(x + i, y + j, c);
-                }
-                spriteIndex += 1;
-            }
-        }
-    }
+    if (!w) { w = 1; }
+	if (!h) { h = 1; }
+	let s = spriteSheet.spriteSize;
+	let sx = (idx*s)%spriteSheet.width, 
+		sy = s * Math.floor((idx*s)/spriteSheet.width),
+		sw = s*w, sh = s*h;
+	ctx.drawImage(spriteSheet, sx, sy, sw, sh, x, y, sw, sh);
+	// Note undefined behaviour edge wrapping (or lack there of)
 };
 
 var clear = Hestia.clear = function(c) {
-    if (useCtx || useCtxClear) {    // TODO: Profile difference with useCtxClear or not
-        setPaletteIndex(c);
-    	ctx.fillRect(0, 0, canvas.width, canvas.height);
-    	if (!useCtx) {
-            imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);    
-        }
-    } else {
-        // Can you initialise an array with a repeating set of values or do we need to enumerate over the entire data array 4 indices at a time?
-        // Really we just want to replace our imageData.data object with an array full of reinitialised values
-    	fillRect(0, 0, canvas.width, canvas.height, c);
-    }
-    
+    setPaletteIndex(c);
+	ctx.fillRect(0, 0, canvas.width, canvas.height);
 };
 
 var drawText = Hestia.drawText = function(text, x, y, c) {
+    setPaletteIndex(c);
 	if (currentFont.capsOnly) {
 		text = text.toUpperCase();
 	}
@@ -361,15 +307,14 @@ var drawText = Hestia.drawText = function(text, x, y, c) {
 		}
 		for (var p = 0; p < n; p++) {
 			if (currentFont[letter][p]) {
-				fillRect(x + i * (currentFont.width + currentFont.spacing) + p % currentFont.width, y + Math.floor(p / currentFont.width), 1, 1, c);
+				ctx.fillRect(x + i * (currentFont.width + currentFont.spacing) + p % currentFont.width, y + Math.floor(p / currentFont.width), 1, 1);
 			}
 		}
 	}
 	// It may be worth investigating if drawing the text to a canvas in the palette color and then using drawImage to draw the font might be faster.
 };
 
-var palettiseCanvas;
-var palettiseSprite = function(idx) {
+var palettiseSprite = function(idx) { // TODO: Convert to palettiseSpriteSheet, TODO: Provide expected palette to extract indicies from
     // Draw Image to hidden canvas and get image data
     if (!palettiseCanvas) {
         palettiseCanvas = document.createElement("canvas");
@@ -385,6 +330,15 @@ var palettiseSprite = function(idx) {
     ctx.drawImage(spriteSheet, sx, sy, s, s, 0, 0, s, s);
     var data = ctx.getImageData(0, 0, s, s).data;
     
+    // Get channels out of palette (could cache this)
+    var paletteColors = [];
+	for(let i = 0, l = palette.length; i < l; i++) {
+	    paletteColors[i] = palette[i].replace("rgb(", "").replace(")", "").split(",");
+	    for (let j = 0; j < 3; j++) {
+	        paletteColors[i][j] = parseInt(paletteColors[i][j], 10);
+	    }
+	}
+    
     // match colors to pallette index based on difference to RGB values
     var spriteIndicies = [];
     var currentColor = [0, 0, 0, 0];
@@ -398,13 +352,14 @@ var palettiseSprite = function(idx) {
             spriteIndicies.push(0); // TODO: Configurable index for transparent?
         } else {
             let closestDiff = Number.MAX_SAFE_INTEGER;
-            let matchedIndex = 0;
+            let matchedIndex = 0; 
+            let tolerance = 3*255; // TODO: Pass tolerance, 0 seems to work for expected colors
             for(let i = 0, l = paletteColors.length; i < l; i++) {
                 let diff = 0;
                 diff += Math.abs(currentColor[0] - paletteColors[i][0]);
                 diff += Math.abs(currentColor[1] - paletteColors[i][1]);
                 diff += Math.abs(currentColor[2] - paletteColors[i][2]);
-                if (diff < closestDiff) {
+                if (diff < tolerance && diff < closestDiff) {
                     matchedIndex = i;
                     closestDiff = diff;
                 }
@@ -413,6 +368,7 @@ var palettiseSprite = function(idx) {
         }
     }
     paletteSprites[idx] = spriteIndicies;
+    // TODO: Redraw sprite sheet in current palette and then use that instead.
     
 };
 
@@ -427,15 +383,9 @@ var tick = function() {
 		if (ticks === 0 || elapsed > 1 / tickRate) {
 			lastTime = Date.now();
 			ticks++; 
-
+			
 			Hestia.update();
-			if (imageData == null) { 
-                imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            }
 			Hestia.draw();
-			//if (!useCtx) {
-    		//	ctx.putImageData(imageData, 0, 0);
-			//}
 			input.update();
 		}		
 	} else {

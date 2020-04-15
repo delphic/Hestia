@@ -40,6 +40,7 @@ var config = {
 		"path": "images/Lena_Test.png", 
 		"spriteSize": 48
 	}
+	// TODO: Config to include hideCursor option
 };
 
 // Arguably this bit is shared bootstrap, could go full retro console and game.js ^^ could be loaded dynamically 
