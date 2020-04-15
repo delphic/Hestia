@@ -1,4 +1,4 @@
-(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+(function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 // Arguably this should be a json file like palettes
 module.exports = {
 	"micro": {
@@ -97,17 +97,20 @@ module.exports = {
 		"*": [1,0,1,0,1,0,1,0,1,0,0,0,0,0,0],
 		"<": [0,0,0,0,1,0,1,0,0,0,1,0,0,0,0],
 		">": [0,0,0,0,1,0,0,0,1,0,1,0,0,0,0],
-		/* This was transcribed by hand but it'd be good to make a ult to read an image and output this data */
+		/* This was transcribed by hand but it'd be good to make a util to read an image and output this data */
 	}
 };
 },{}],2:[function(require,module,exports){
 // PICO-8 Inspired HTML5 Canvas Renderer
-
 Hestia = {};
+// ^^ TODO: No Globals please, it's cute but no, if you want a global you can make it in your game code
 
-var canvas, ctx, palette, paletteIndex, spriteSheet;
+var canvas, ctx, palette, paletteIndex, spriteSheet, imageData;
 var tickRate, ticks, lastTime, elapsed, pause, lockCount = 0;
 var currentFont;
+
+var useCtx = false, useCtxClear = false; // Switch between image data method and ctx.fillRect
+var paletteColors, paletteSprites = [];
 
 var fonts = require("./fonts.js");
 var input = require("./input.js");
@@ -134,7 +137,7 @@ Hestia.init = function(config) {
 	// Set Canvas Size
 	canvas.width = config.width;
 	canvas.height = config.height;
-	canvas.setAttribute("style", "width:" + config.width*config.pixelRatio/window.devicePixelRatio + "px; height:" + config.height * config.pixelRatio / window.devicePixelRatio + "px;");
+	canvas.setAttribute("style", "width:" + config.width * config.pixelRatio / window.devicePixelRatio + "px; height:" + config.height * config.pixelRatio / window.devicePixelRatio + "px;");
 
 	// Set Pallette
 	if (config.palette) {
@@ -218,10 +221,13 @@ Hestia.mouseButtonUp = function(btn) {
 	return input.getMouseButtonUp(btn);
 };
 
+// Feels like this is a great opportunity for a WASM module
+// but need to separate the data array manipulation from the DOM manip / load/save etc
+
 // Loading
 // https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
 var loadSpriteSheet = Hestia.loadSpriteSheet = function(path, spriteSize) {
-	// (note img currently, no pallete enforcement)
+	// (note img currently, no pallete enforcement - instead matched on color)
 	// TODO: convert to use indexed image format
 	lockCount += 1;
 	spriteSheet = new Image();
@@ -230,7 +236,11 @@ var loadSpriteSheet = Hestia.loadSpriteSheet = function(path, spriteSize) {
 		return response.blob(); 
 	}).then(function(blob) {
 		spriteSheet.src = URL.createObjectURL(blob);
-		lockCount -= 1;
+		window.setTimeout(function(){
+		    // Yup that seems to be the issue - TODO - less hack way maybe!
+    		palettiseSprite(0); // TODO: Palettise as many as there are?
+    		lockCount -= 1;
+		}, 1000); // HACK to see if the issue is setting src is async
 	}).catch(function(error) {
 		console.log("Load Sprite Sheet Failed: " + error.message);
 		lockCount -= 1;
@@ -242,9 +252,18 @@ var loadPalette = Hestia.loadPalette = function(path) {
 	fetch(path).then(function(response) {
 		return response.json();
 	}).then(function(json) {
-		palette = json.palette; 
-		ctx.fillStyle = palette[0];
-		ctx.paletteIndex = 0;
+		palette = json.palette;
+		
+	    setPaletteIndex(0);
+		paletteColors = [];
+		for(let i = 0, l = palette.length; i < l; i++) {
+		    // TODO: profile difference between typed array and not 
+		    paletteColors[i] = palette[i].replace("rgb(", "").replace(")", "").split(",");
+		    for (let j = 0; j < 3; j++) {
+		        paletteColors[i][j] = parseInt(paletteColors[i][j], 10);
+		    }
+		}
+		
 		lockCount -= 1;
 	}).catch(function(error) { 
 		console.log("Load Palette Failed: " + error.message);
@@ -252,46 +271,85 @@ var loadPalette = Hestia.loadPalette = function(path) {
 	});
 };
 
-
 // Drawing
-// Could probably be done faster!
-// https://hacks.mozilla.org/2009/06/pushing-pixels-with-canvas/
+
+// TODO: Profile performance difference between ctx.drawRect and imageData
 var setPixel = Hestia.setPixel = function(x, y, c) {
-	setPaletteIndex(c);
-	ctx.fillRect(x,y,1,1);
+    if (useCtx) {
+        setPaletteIndex(c);
+        ctx.fillRect(x,y,1,1);
+    } else {
+    	let i = y * (imageData.width * 4) + x * 4;
+    	imageData.data[i] = paletteColors[c][0];
+    	imageData.data[i+1] = paletteColors[c][1];
+    	imageData.data[i+2] = paletteColors[c][2];
+    	imageData.data[i+3] = 255;        
+    }
 };
 
 var fillRect = Hestia.fillRect = function(x, y, w, h, c) {
-	setPaletteIndex(c);
-	ctx.fillRect(x,y,w,h);
+    if (useCtx) {
+        setPaletteIndex(c);
+        ctx.fillRect(x,y,w,h);
+    } else {
+	    for (let j = y; j < y + h; j++) {
+        	for (let i = x; i < x + w; i++) {
+    	        setPixel(i, j, c);
+    	        // We could be smarter about this, just enumerate the row ourselves in chunks of 4
+    	    }
+    	}        
+    }
 }; 
 
 var drawRect = Hestia.drawRect = function(x, y, w, h, c) {
-	setPaletteIndex(c);
-	ctx.fillRect(x, y, w, 1);
-	ctx.fillRect(x, y, 1, h);
-	ctx.fillRect(x, y + h - 1, w, 1);
-	ctx.fillRect(x + w - 1, y, 1, h);
+	fillRect(x, y, w, 1, c);
+	fillRect(x, y, 1, h, c);
+	fillRect(x, y + h - 1, w, 1, c);
+	fillRect(x + w - 1, y, 1, h, c);
 };
 
 var drawSprite = Hestia.drawSprite = function(idx, x, y, w, h) {
-	if (!w) { w = 1; }
-	if (!h) { h = 1; }
-	var s = spriteSheet.spriteSize;
-	var sx = (idx*s)%spriteSheet.width, 
-		sy = s * Math.floor((idx*s)/spriteSheet.width),
-		sw = s*w, sh = s*h;
-	ctx.drawImage(spriteSheet, sx, sy, sw, sh, x, y, sw, sh);
-	// Note undefined behaviour edge wrapping (or lack there of)
-}
+    if (useCtx) {
+    	if (!w) { w = 1; }
+    	if (!h) { h = 1; }
+    	let s = spriteSheet.spriteSize;
+    	let sx = (idx*s)%spriteSheet.width, 
+    		sy = s * Math.floor((idx*s)/spriteSheet.width),
+    		sw = s*w, sh = s*h;
+    	ctx.drawImage(spriteSheet, sx, sy, sw, sh, x, y, sw, sh);
+    	// Note undefined behaviour edge wrapping (or lack there of)
+    } else {
+        // Note image data drawing does not support w, h
+        let s = spriteSheet.spriteSize;
+        let spriteIndex = 0;
+        for (let j = 0; j < s; j++) {
+            for (let i = 0; i < s; i++) {
+                let c = paletteSprites[idx][spriteIndex];
+                if (c !== 0) { // TODO: Configurable Transparency?
+                    setPixel(x + i, y + j, c);
+                }
+                spriteIndex += 1;
+            }
+        }
+    }
+};
 
 var clear = Hestia.clear = function(c) {
-	setPaletteIndex(c);
-	fillRect(0, 0, canvas.width, canvas.height);
+    if (useCtx || useCtxClear) {    // TODO: Profile difference with useCtxClear or not
+        setPaletteIndex(c);
+    	ctx.fillRect(0, 0, canvas.width, canvas.height);
+    	if (!useCtx) {
+            imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);    
+        }
+    } else {
+        // Can you initialise an array with a repeating set of values or do we need to enumerate over the entire data array 4 indices at a time?
+        // Really we just want to replace our imageData.data object with an array full of reinitialised values
+    	fillRect(0, 0, canvas.width, canvas.height, c);
+    }
+    
 };
 
 var drawText = Hestia.drawText = function(text, x, y, c) {
-	setPaletteIndex(c);
 	if (currentFont.capsOnly) {
 		text = text.toUpperCase();
 	}
@@ -303,11 +361,59 @@ var drawText = Hestia.drawText = function(text, x, y, c) {
 		}
 		for (var p = 0; p < n; p++) {
 			if (currentFont[letter][p]) {
-				ctx.fillRect(x + i * (currentFont.width + currentFont.spacing) + p % currentFont.width, y + Math.floor(p / currentFont.width), 1, 1);
+				fillRect(x + i * (currentFont.width + currentFont.spacing) + p % currentFont.width, y + Math.floor(p / currentFont.width), 1, 1, c);
 			}
 		}
 	}
 	// It may be worth investigating if drawing the text to a canvas in the palette color and then using drawImage to draw the font might be faster.
+};
+
+var palettiseCanvas;
+var palettiseSprite = function(idx) {
+    // Draw Image to hidden canvas and get image data
+    if (!palettiseCanvas) {
+        palettiseCanvas = document.createElement("canvas");
+        document.body.appendChild(palettiseCanvas);
+        palettiseCanvas.style = "display: none";
+    }
+    var s = spriteSheet.spriteSize;
+    	var sx = (idx*s)%spriteSheet.width, 
+		sy = s * Math.floor((idx*s)/spriteSheet.width);
+	palettiseCanvas.width = s;
+    palettiseCanvas.height = s;
+    var ctx = palettiseCanvas.getContext('2d');
+    ctx.drawImage(spriteSheet, sx, sy, s, s, 0, 0, s, s);
+    var data = ctx.getImageData(0, 0, s, s).data;
+    
+    // match colors to pallette index based on difference to RGB values
+    var spriteIndicies = [];
+    var currentColor = [0, 0, 0, 0];
+    for(let j = 0, n = data.length; j < n; j += 4) {
+        currentColor[0] = data[j];
+        currentColor[1] = data[j+1];
+        currentColor[2] = data[j+2];
+        currentColor[3] = data[j+3];
+        
+        if (currentColor[3] === 0) {
+            spriteIndicies.push(0); // TODO: Configurable index for transparent?
+        } else {
+            let closestDiff = Number.MAX_SAFE_INTEGER;
+            let matchedIndex = 0;
+            for(let i = 0, l = paletteColors.length; i < l; i++) {
+                let diff = 0;
+                diff += Math.abs(currentColor[0] - paletteColors[i][0]);
+                diff += Math.abs(currentColor[1] - paletteColors[i][1]);
+                diff += Math.abs(currentColor[2] - paletteColors[i][2]);
+                if (diff < closestDiff) {
+                    matchedIndex = i;
+                    closestDiff = diff;
+                }
+            }
+            spriteIndicies.push(matchedIndex);
+        }
+    }
+    paletteSprites[idx] = spriteIndicies;
+    
 };
 
 Hestia.palette = function() {
@@ -316,14 +422,20 @@ Hestia.palette = function() {
 
 // Private Methods
 var tick = function() {
-	if (lockCount == 0) {
+	if (lockCount === 0) {
 		elapsed = (Date.now() - lastTime) / 1000;
-		if (ticks == 0 || elapsed > 1 / tickRate) {
+		if (ticks === 0 || elapsed > 1 / tickRate) {
 			lastTime = Date.now();
 			ticks++; 
 
 			Hestia.update();
+			if (imageData == null) { 
+                imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            }
 			Hestia.draw();
+			//if (!useCtx) {
+    		//	ctx.putImageData(imageData, 0, 0);
+			//}
 			input.update();
 		}		
 	} else {
@@ -335,9 +447,9 @@ var tick = function() {
 };
 
 var setPaletteIndex = function(c) {
-	if (ctx.paletteIndex != c && c >= 0 && c <= palette.length) {
+	if (paletteIndex != c && c >= 0 && c <= palette.length) {
+		paletteIndex = c;
 		ctx.fillStyle = palette[c];
-		ctx.paletteIndex = c;
 	}
 };
 },{"./fonts.js":1,"./input.js":3}],3:[function(require,module,exports){
@@ -398,7 +510,7 @@ var Input = module.exports = function() {
 
 	exports.getMousePosition = function() {
 		return mousePos;
-	}
+	};
 
 	exports.getMouseButton = function(btn) {
 		return mousePressed[btn];
@@ -410,7 +522,7 @@ var Input = module.exports = function() {
 
 	exports.getMouseButtonUp = function(btn) {
 		return mouseUp[btn];
-	}
+	};
 
 	var handleMouseMove = function(event) {
 		var canvas = event.target;

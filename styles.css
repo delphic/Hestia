@@ -12,7 +12,7 @@ canvas {
 	image-rendering: -moz-crisp-edges;
 	image-rendering: optimizespeed;
 	image-rendering: pixelated; /* Chrome */
-	/* cursor: none; */
+	cursor: none;
 	/* Ideally would just use pixelated, but not implemented across browsers */
 	/* https://developer.mozilla.org/en-US/docs/Web/CSS/image-rendering */
 }

@@ -7,10 +7,10 @@ var update = function() {
 };
 var draw = function() {
 	Hestia.clear(1);
-	//drawPalette(0,0,4);
+	drawPalette(0,0,4);
 	Hestia.drawSprite(0,64,64);
 	drawCursor();
-}
+};
 
 var drawPalette = function(x, y, size) {
 	var l = Hestia.palette().length;
@@ -53,10 +53,21 @@ window.onload = function() {
 	config.canvas = canvas;
 
 	init();
-
+    
 	Hestia.init(config);
 	Hestia.run();
 };
+
+var paused = false;
+window.addEventListener('focus', function(event) {
+    if (paused) {
+        Hestia.run();
+    }
+});
+window.addEventListener('blur', function(event){
+    paused = true;
+    Hestia.stop();
+});
 
 
 // Text Box 'class'
