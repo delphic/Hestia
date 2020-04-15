@@ -8,7 +8,7 @@ var update = function() {
 var draw = function() {
 	Hestia.clear(1);
 	drawPalette(0,0,4);
-	Hestia.drawSprite(0,64,64);
+	Hestia.drawSprite(0,48,48);
 	drawCursor();
 };
 

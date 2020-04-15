@@ -45,7 +45,7 @@ Hestia.init = function(config) {
 	if (config.spriteSheet && config.spriteSheet.path) {
 		loadSpriteSheet(config.spriteSheet.path, config.spriteSheet.spriteSize);
 	}
-
+	
 	// Set Fonts
 	currentFont = fonts["micro"];
 
@@ -131,17 +131,21 @@ var loadSpriteSheet = Hestia.loadSpriteSheet = function(path, spriteSize) {
 		return response.blob(); 
 	}).then(function(blob) {
 		spriteSheet.src = URL.createObjectURL(blob);
-		window.setTimeout(function(){
-    		palettiseSprite(0); // TODO: Palettise entire sprite sheet
-    		lockCount -= 1;
-		}, 1000); // HACK setting src appears to be async
+		let pollId = window.setInterval(function() {
+		    // Hack poll to wait for src to finish and ensure palette has loaded
+		    if (palette && spriteSheet.width > 0) {
+		        palettiseSpriteSheet(spriteSheet, palette);
+        		lockCount -= 1;
+        		window.clearInterval(pollId);
+		    }
+		}, 60);
 	}).catch(function(error) {
 		console.log("Load Sprite Sheet Failed: " + error.message);
 		lockCount -= 1;
 	});
 };
 
-var loadPalette = Hestia.loadPalette = function(path) {
+var loadPalette = Hestia.loadPalette = function(path, callback) {
 	lockCount += 1;
 	fetch(path).then(function(response) {
 		return response.json();
@@ -149,9 +153,11 @@ var loadPalette = Hestia.loadPalette = function(path) {
 		palette = json.palette;
 	    setPaletteIndex(0);
 		lockCount -= 1;
+		if (callback) { callback(); }
 	}).catch(function(error) { 
 		console.log("Load Palette Failed: " + error.message);
 		lockCount -= 1;
+		if (callback) { callback(); }
 	});
 };
 
@@ -175,15 +181,29 @@ var drawRect = Hestia.drawRect = function(x, y, w, h, c) {
 	ctx.fillRect(x + w - 1, y, 1, h);
 };
 
-var drawSprite = Hestia.drawSprite = function(idx, x, y, w, h) {
-    if (!w) { w = 1; }
-	if (!h) { h = 1; }
+var drawSprite = Hestia.drawSprite = function(idx, x, y, transpencyIndex) {
+    if (!transpencyIndex) {
+        transpencyIndex = 0;
+    }
 	let s = spriteSheet.spriteSize;
+	// Super naive palette based sprite rendering
+	let k = 0, c = 0;
+    for(let j = 0; j < s; j++) {
+    	for(let i = 0; i < s; i++) {
+    	    c = paletteSprites[idx][k++];
+    	    if (c != transpencyIndex) {
+    	        setPixel(x+i, y+j, c);
+    	    }
+	    }
+	}
+	/* Draw Image Method
 	let sx = (idx*s)%spriteSheet.width, 
 		sy = s * Math.floor((idx*s)/spriteSheet.width),
-		sw = s*w, sh = s*h;
+		sw = s*1, sh = s*1; // Only supporting 1:1 scale atm
+	// Note scaling using drawImage is not recommended for performance
 	ctx.drawImage(spriteSheet, sx, sy, sw, sh, x, y, sw, sh);
 	// Note undefined behaviour edge wrapping (or lack there of)
+	*/
 };
 
 var clear = Hestia.clear = function(c) {
@@ -211,61 +231,68 @@ var drawText = Hestia.drawText = function(text, x, y, c) {
 	// It may be worth investigating if drawing the text to a canvas in the palette color and then using drawImage to draw the font might be faster.
 };
 
-var palettiseSprite = function(idx) { // TODO: Convert to palettiseSpriteSheet, TODO: Provide expected palette to extract indicies from
+var palettiseSpriteSheet = function(spriteSheet, palette, transparencyIndex) {
     // Draw Image to hidden canvas and get image data
     if (!palettiseCanvas) {
         palettiseCanvas = document.createElement("canvas");
         document.body.appendChild(palettiseCanvas);
         palettiseCanvas.style = "display: none";
     }
-    var s = spriteSheet.spriteSize;
-    	var sx = (idx*s)%spriteSheet.width, 
-		sy = s * Math.floor((idx*s)/spriteSheet.width);
-	palettiseCanvas.width = s;
-    palettiseCanvas.height = s;
-    var ctx = palettiseCanvas.getContext('2d');
-    ctx.drawImage(spriteSheet, sx, sy, s, s, 0, 0, s, s);
-    var data = ctx.getImageData(0, 0, s, s).data;
-    
+
     // Get channels out of palette (could cache this)
-    var paletteColors = [];
-	for(let i = 0, l = palette.length; i < l; i++) {
-	    paletteColors[i] = palette[i].replace("rgb(", "").replace(")", "").split(",");
-	    for (let j = 0; j < 3; j++) {
-	        paletteColors[i][j] = parseInt(paletteColors[i][j], 10);
-	    }
-	}
-    
-    // match colors to pallette index based on difference to RGB values
-    var spriteIndicies = [];
-    var currentColor = [0, 0, 0, 0];
-    for(let j = 0, n = data.length; j < n; j += 4) {
-        currentColor[0] = data[j];
-        currentColor[1] = data[j+1];
-        currentColor[2] = data[j+2];
-        currentColor[3] = data[j+3];
-        
-        if (currentColor[3] === 0) {
-            spriteIndicies.push(0); // TODO: Configurable index for transparent?
-        } else {
-            let closestDiff = Number.MAX_SAFE_INTEGER;
-            let matchedIndex = 0; 
-            let tolerance = 3*255; // TODO: Pass tolerance, 0 seems to work for expected colors
-            for(let i = 0, l = paletteColors.length; i < l; i++) {
-                let diff = 0;
-                diff += Math.abs(currentColor[0] - paletteColors[i][0]);
-                diff += Math.abs(currentColor[1] - paletteColors[i][1]);
-                diff += Math.abs(currentColor[2] - paletteColors[i][2]);
-                if (diff < tolerance && diff < closestDiff) {
-                    matchedIndex = i;
-                    closestDiff = diff;
-                }
-            }
-            spriteIndicies.push(matchedIndex);
+    let paletteColors = [];
+    for(let i = 0, l = palette.length; i < l; i++) {
+        paletteColors[i] = palette[i].replace("rgb(", "").replace(")", "").split(",");
+        for (let j = 0; j < 3; j++) {
+            paletteColors[i][j] = parseInt(paletteColors[i][j], 10);
         }
     }
-    paletteSprites[idx] = spriteIndicies;
-    // TODO: Redraw sprite sheet in current palette and then use that instead.
+    if (!transparencyIndex || transparencyIndex < 0 || transparencyIndex >= palette.length) {
+        transparencyIndex = 0;
+    }
+    
+    let s = spriteSheet.spriteSize;
+	palettiseCanvas.width = s;
+    palettiseCanvas.height = s;
+    let ctx = palettiseCanvas.getContext('2d');
+
+    let spriteCount = Math.floor(spriteSheet.width / s) * Math.floor(spriteSheet.height / s);
+    for(let idx = 0; idx < spriteCount; idx++) {
+    	let sx = (idx*s)%spriteSheet.width, 
+    		sy = s * Math.floor((idx*s)/spriteSheet.width);
+        ctx.drawImage(spriteSheet, sx, sy, s, s, 0, 0, s, s);
+        let data = ctx.getImageData(0, 0, s, s).data;
+        
+        // match colors to pallette index based on difference to RGB values
+        let spriteIndicies = [];
+        let currentColor = [0, 0, 0, 0];
+        for(let j = 0, n = data.length; j < n; j += 4) {
+            currentColor[0] = data[j];
+            currentColor[1] = data[j+1];
+            currentColor[2] = data[j+2];
+            currentColor[3] = data[j+3];
+            
+            if (currentColor[3] === 0) {
+                spriteIndicies.push(transparencyIndex);
+            } else {
+                let closestDiff = Number.MAX_SAFE_INTEGER;
+                let matchedIndex = 0; 
+                let tolerance = 3*255; // TODO: Pass tolerance, 0 seems to work for expected colors
+                for(let i = 0, l = paletteColors.length; i < l; i++) {
+                    let diff = 0;
+                    diff += Math.abs(currentColor[0] - paletteColors[i][0]);
+                    diff += Math.abs(currentColor[1] - paletteColors[i][1]);
+                    diff += Math.abs(currentColor[2] - paletteColors[i][2]);
+                    if (diff < tolerance && diff < closestDiff) {
+                        matchedIndex = i;
+                        closestDiff = diff;
+                    }
+                }
+                spriteIndicies.push(matchedIndex);
+            }
+        }
+        paletteSprites[idx] = spriteIndicies;
+    }
     
 };
 
