@@ -2,7 +2,7 @@
 Hestia = {};
 // ^^ TODO: No Globals please, it's cute but no, if you want a global you can make it in your game code
 
-var canvas, ctx, palette, paletteIndex, spriteSheet, imageData;
+var canvas, ctx, palette, paletteIndex, spriteSheet, hideCursor;
 var tickRate, ticks, lastTime, elapsed, pause, lockCount = 0;
 var currentFont;
 var palettiseCanvas, paletteSprites = []; // sprites by index in palette indices
@@ -65,6 +65,9 @@ Hestia.init = function(config) {
 	} else {
 		tickRate = 60;
 	}
+    if (config.hideCursor) {
+        hideCursor = true;
+    }
 
 	// Input
 	input.init(canvas);
@@ -74,6 +77,9 @@ Hestia.run = function() {
 	pause = false;
 	lastTime = 0;
 	window.requestAnimationFrame(tick);	
+	if (hideCursor) {
+	    canvas.classList.add("hideCursor");
+	}
 };
 
 Hestia.step = function() {
@@ -84,6 +90,9 @@ Hestia.step = function() {
 
 Hestia.stop = function() {
 	pause = true;
+	if (hideCursor) {
+	    canvas.classList.remove("hideCursor");
+	}
 };
 
 // Input Querying

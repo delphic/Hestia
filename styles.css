@@ -8,11 +8,13 @@ canvas {
 	display: block;
 	margin: 0 auto;
 	padding: 0;
-	cursor: none;   /* TODO: Apply via JS only when appropirate (i.e. running) */
 	image-rendering: crisp-edges; /* Firefox */
 	image-rendering: -moz-crisp-edges;
 	image-rendering: optimizespeed;
 	image-rendering: pixelated; /* Chrome */
 	/* Ideally would just use pixelated, but not implemented across browsers */
 	/* https://developer.mozilla.org/en-US/docs/Web/CSS/image-rendering */
+}
+.hideCursor {
+    cursor: none;
 }

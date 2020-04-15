@@ -44,8 +44,8 @@ var config = {
 	"spriteSheet": { 
 		"path": "images/Lena_Test.png", 
 		"spriteSize": 48
-	}
-	// TODO: Config to include hideCursor option
+	},
+	"hideCursor": true
 };
 
 // Arguably this bit is shared bootstrap, could go full retro console and game.js ^^ could be loaded dynamically 
@@ -58,11 +58,16 @@ window.onload = function() {
 	config.draw = draw;
 	config.canvas = canvas;
 
+    if (config.hideCursor) {
+        canvas.classList.add("hideCursor");
+    }
+	
 	init();
     
 	Hestia.init(config);
 	Hestia.run();
 };
+
 
 var paused = false;
 window.addEventListener('focus', function(event) {
