@@ -1,6 +1,5 @@
 // PICO-8 Inspired HTML5 Canvas Renderer
 Hestia = {};
-// ^^ TODO: No Globals please, it's cute but no, if you want a global you can make it in your game code
 
 var canvas, ctx, palette, paletteIndex, spriteSheet, hideCursor;
 var tickRate, ticks, lastTime, elapsed, pause, lockCount = 0;

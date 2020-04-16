@@ -48,19 +48,12 @@ var config = {
 	"hideCursor": true
 };
 
-// Arguably this bit is shared bootstrap, could go full retro console and game.js ^^ could be loaded dynamically 
-// https://stackoverflow.com/questions/44803944/can-i-run-a-js-script-from-another-using-fetch
-// https://stackoverflow.com/questions/950087/how-do-i-include-a-javascript-file-in-another-javascript-file
 window.onload = function() {
 	var canvas = document.getElementById("canvas");
 
 	config.update = update;
 	config.draw = draw;
 	config.canvas = canvas;
-
-    if (config.hideCursor) {
-        canvas.classList.add("hideCursor");
-    }
 	
 	init();
     
@@ -82,11 +75,7 @@ window.addEventListener('blur', function(event){
 
 
 // Text Box 'class'
-// Q: Do we really want OO to this level?
-// I mean it's part of why we moved to JS so we'd have the option
-// the fantasy consoles all quite like minimal memory use / functional style code
-// is it worth following that style as a differente way of coding for practice?
-// rather than reinventing Unity every place we go?
+// TODO: Move to separate file
 var TextBox = (function(){
 	var proto = {
 		padding: 3,

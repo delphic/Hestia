@@ -1,0 +1,31 @@
+Scratch Pad:
+------------
+
+// Sprite Sheet Test Code
+var spriteIdx = 4, spriteX = 0, spriteY = 0;
+var sprites = [0,1,2,3,16,17,18,19,20,21,32,33,34,35];
+
+var spriteTestUpdate = function() {
+	if(Hestia.button(0)) {
+		spriteX -= 1;
+	}
+	if (Hestia.button(1)) {
+		spriteX += 1;
+	}
+	if (Hestia.button(2)) {
+		spriteY -= 1;
+	}
+	if (Hestia.button(3)) {
+		spriteY += 1;
+	}
+	if (Hestia.buttonUp(4)) {
+		spriteIdx = (spriteIdx + sprites.length - 1) % sprites.length;
+	}
+	if (Hestia.buttonUp(5)) {
+		spriteIdx = (spriteIdx + 1) % sprites.length;
+	}
+};
+
+var spriteTestDraw = function() {
+	Hestia.drawSprite(spriteIdx, spriteX, spriteY);
+};
