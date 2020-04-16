@@ -217,7 +217,9 @@ var config = {
 	"spriteSheet": { 
 		"path": "images/spriteSheet.png", 
 		"spriteSize": 8
-	}
+	},
+	"keys": [ 37, 39, 38, 40, 90, 88], // left, right, up, down, z, x
+	"hideCursor": false
 };
 
 // Arguably this bit is shared bootstrap, could go full retro console and game.js ^^ could be loaded dynamically 

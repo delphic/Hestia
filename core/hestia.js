@@ -69,7 +69,7 @@ Hestia.init = function(config) {
     }
 
 	// Input
-	input.init(canvas);
+	input.init(canvas, config.keys);
 };
 
 Hestia.run = function() {
@@ -268,6 +268,7 @@ var palettiseSpriteSheet = function(spriteSheet, palette, transparencyIndex) {
     for(let idx = 0; idx < spriteCount; idx++) {
     	let sx = (idx*s)%spriteSheet.width, 
     		sy = s * Math.floor((idx*s)/spriteSheet.width);
+    	ctx.clearRect(0, 0, s, s);
         ctx.drawImage(spriteSheet, sx, sy, s, s, 0, 0, s, s);
         let data = ctx.getImageData(0, 0, s, s).data;
         

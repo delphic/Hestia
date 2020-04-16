@@ -103,7 +103,6 @@ module.exports = {
 },{}],2:[function(require,module,exports){
 // PICO-8 Inspired HTML5 Canvas Renderer
 Hestia = {};
-// ^^ TODO: No Globals please, it's cute but no, if you want a global you can make it in your game code
 
 var canvas, ctx, palette, paletteIndex, spriteSheet, hideCursor;
 var tickRate, ticks, lastTime, elapsed, pause, lockCount = 0;
@@ -173,7 +172,7 @@ Hestia.init = function(config) {
     }
 
 	// Input
-	input.init(canvas);
+	input.init(canvas, config.keys);
 };
 
 Hestia.run = function() {
@@ -372,6 +371,7 @@ var palettiseSpriteSheet = function(spriteSheet, palette, transparencyIndex) {
     for(let idx = 0; idx < spriteCount; idx++) {
     	let sx = (idx*s)%spriteSheet.width, 
     		sy = s * Math.floor((idx*s)/spriteSheet.width);
+    	ctx.clearRect(0, 0, s, s);
         ctx.drawImage(spriteSheet, sx, sy, s, s, 0, 0, s, s);
         let data = ctx.getImageData(0, 0, s, s).data;
         
@@ -449,31 +449,41 @@ var Input = module.exports = function() {
 	var mousePressed = [false, false, false];	// Pressed during last tick
 	var mouseUp = [false, false, false];		// Lifted since last tick
 
-	// Left 0, Right 1, Up 2, Down 3, Z 4, X 5	
-	// 37, 39, 38, 40, 90, 88
-	// Key enum should probably be configable 
-	var keyDown = [false, false, false, false, false, false];		// Pressed since last tick
-	var keyPressed = [false, false, false, false, false, false];	// Pressed during last tick
-	var keyUp = [false, false, false, false, false, false];		// Lifted since last tick
+    // Config determines index -> key
+	var keyDown = [];		// Pressed since last tick
+	var keyPressed = [];	// Pressed during last tick
+	var keyUp = [];		// Lifted since last tick
+	var keyMap = {};    // Maps from keycode to key index
+	var keyCount = 0;
 
-	exports.init = function(canvas) {
+	exports.init = function(canvas, keys) {
 		canvas.addEventListener("mousemove", handleMouseMove);
 		document.addEventListener("mousedown", handleMouseDown, true);
 		document.addEventListener("mouseup", handleMouseUp);
 		document.addEventListener("keyup", handleKeyUp);
 		document.addEventListener("keydown", handleKeyDown);
-		// mouseenter, mouseout
+		// mouseenter, mouseout;
+		
+		if (keys) {
+    		keyCount = keys.length;
+    		for (let i = 0; i < keyCount; i++) {
+    		    keyMap[keys[i]] = i;
+    		    keyDown[i] = false;
+    		    keyPressed[i] = false;
+    		    keyUp[i] = false;
+    		}		    
+		}
 	};
 
 	exports.update = function() {
-		for(var i = 0; i < 6; i++) {
-			if (i < 3) {
-				mouseDown[i] = false;
-				if (mouseUp[i]) {
-					mouseUp[i] = false;
-					mousePressed[i] = false;
-				}
+	    for (let i = 0; i < 3; i++) {
+	        mouseDown[i] = false;
+			if (mouseUp[i]) {
+				mouseUp[i] = false;
+				mousePressed[i] = false;
 			}
+	    }
+		for (let i = 0; i < keyCount; i++) {
 			keyDown[i] = false;
 			if (keyUp[i]) {
 				keyUp[i] = false;
@@ -539,21 +549,8 @@ var Input = module.exports = function() {
 	};
 
 	var mapKeyCodeToIndex = function(keyCode) {
-		switch(keyCode) {
-			case 37: // left
-			return 0;
-			case 39: // right
-			return 1;
-			case 38: // up
-			return 2; 
-			case 40: // down
-			return 3; 
-			case 90: // z
-			return 4;
-			case 88: // x
-			return 5;
-		}
-		return -1;
+	    let index = keyMap[keyCode];
+		return index !== undefined ? index : -1;
 	};
 
 	return exports;

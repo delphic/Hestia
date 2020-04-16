@@ -45,6 +45,7 @@ var config = {
 		"path": "images/Lena_Test.png", 
 		"spriteSize": 48
 	},
+	"keys": [ 37, 39, 38, 40, 90, 88], // left, right, up, down, z, x
 	"hideCursor": true
 };
 
