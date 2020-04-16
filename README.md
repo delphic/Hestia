@@ -10,6 +10,7 @@ Provides a input state tracker - you can provide key bindings (currently only mo
 JavaScript Style:
 -----------------
 Broadly https://github.com/delphic/Fury/blob/master/docs/Fury%20Overview.md#javascript-style
+
 However we're a bit more forgiving of single character variables at the moment.
 
 Build:
@@ -19,4 +20,5 @@ browserify core/hestia.js -o hestia.js
 Features:
 ---------
 Present: Rendering, Input
+
 Outstanding: SFX, Music, Map
