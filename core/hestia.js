@@ -8,6 +8,7 @@ var palettiseCanvas, paletteSprites = []; // sprites by index in palette indices
 
 var fonts = require("./fonts.js");
 var input = require("./input.js");
+var audio = Hestia.audio = require('./audio.js');   // Exposing interface for testing / play
 
 // Public methods
 
@@ -70,6 +71,9 @@ Hestia.init = function(config) {
 
 	// Input
 	input.init(canvas, config.keys);
+	
+	// Audio
+	audio.init();
 };
 
 Hestia.run = function() {
