@@ -5,7 +5,13 @@ var init = function() {
 };
 
 var update = function() {
+    
     // textBox.update();
+    //if (Hestia.mouseButtonDown(0)) {
+    //    Hestia.audio.playNote(4, "G", 1);
+    //} else if (Hestia.mouseButtonUp(0)) {
+    //    Hestia.audio.stopNote(4, "G");
+    //}
 };
 
 var draw = function() {

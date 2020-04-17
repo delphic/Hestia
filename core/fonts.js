@@ -97,5 +97,6 @@ module.exports = {
 		"<": [0,0,0,0,1,0,1,0,0,0,1,0,0,0,0],
 		">": [0,0,0,0,1,0,0,0,1,0,1,0,0,0,0],
 		/* This was transcribed by hand but it'd be good to make a util to read an image and output this data */
+		/* Could use a variations on the palettise function, just need to check the alpha channel tho! */ 
 	}
 };
