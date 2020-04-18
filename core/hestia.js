@@ -46,8 +46,12 @@ Hestia.init = function(config) {
 		loadSpriteSheet(config.spriteSheet.path, config.spriteSheet.spriteSize);
 	}
 	
-	// Set Fonts
-	currentFont = fonts["micro"];
+	// Set Font
+	if (config.font && config.font.path) {
+	    loadFont(config.font);
+	} else {
+    	currentFont = fonts["micro"];
+	}
 
 	// Set Tick Functions
 	if (config.update) {
@@ -152,9 +156,30 @@ var loadSpriteSheet = Hestia.loadSpriteSheet = function(path, spriteSize) {
 		    }
 		}, 60);
 	}).catch(function(error) {
-		console.log("Load Sprite Sheet Failed: " + error.message);
+		console.error("Load Sprite Sheet Failed: " + error.message);
 		lockCount -= 1;
 	});
+};
+
+var loadFont = Hestia.loadFont = function(font) {
+    lockCount += 1;
+    fontSheet = new Image();
+    fetch(font.path).then(function(response) {
+        return response.blob();
+    }).then(function(blob) {
+        fontSheet.src = URL.createObjectURL(blob);
+        let pollId = window.setInterval(function(){
+            // Hack to wait for src to finish
+            if (fontSheet.width > 0) {
+                createFontJson(fontSheet, font.name, font.alphabet, font.width, font.height, font.spacing, font.reducedWidthLowerCase, font.baselineOffsets);
+                lockCount -= 1;
+                window.clearInterval(pollId);
+            }
+        }, 60);
+    }).catch(function(error) {
+        console.error("Load Font Failed: " + error.message);
+        lockCount -= 1;
+    });
 };
 
 var loadPalette = Hestia.loadPalette = function(path, callback) {
@@ -229,18 +254,47 @@ var drawText = Hestia.drawText = function(text, x, y, c) {
 		text = text.toUpperCase();
 	}
 	var n = currentFont.width * currentFont.height;
+	let offset = 0;
 	for(var i = 0, l = text.length; i < l; i++) {
 		var letter = text.substr(i,1);
 		if (letter == ' ' || !currentFont[letter]) {
+    		offset += currentFont.width + currentFont.spacing;
 			continue;
+		}
+		// Hacky Kerning
+		let xOffset = 0, yOffset = 0;
+		if (currentFont.reducedWidthLowerCase && letter.toUpperCase() != letter && letter != "m" && letter != "w") {
+		    xOffset = -currentFont.reducedWidthLowerCase;
+		}
+		if (currentFont.baselineOffsets && currentFont.baselineOffsets.includes(letter)) {
+		    yOffset = +1;
 		}
 		for (var p = 0; p < n; p++) {
 			if (currentFont[letter][p]) {
-				ctx.fillRect(x + i * (currentFont.width + currentFont.spacing) + p % currentFont.width, y + Math.floor(p / currentFont.width), 1, 1);
+				ctx.fillRect(
+				    x + offset + xOffset + p % currentFont.width, y + yOffset + Math.floor(p / currentFont.width), 1, 1);
 			}
 		}
+		offset += currentFont.width + currentFont.spacing + xOffset;
 	}
 	// It may be worth investigating if drawing the text to a canvas in the palette color and then using drawImage to draw the font might be faster.
+};
+
+var measureText = Hestia.measureText = function(text) {
+    let length = 0;
+    if (currentFont.reducedWidthLowerCase) {
+        for(var i = 0, l = text.length; i < l; i++) {
+            var letter = text[i];
+            if (currentFont[letter] && letter.toUpperCase() != letter && letter != "m" && letter != "w") {
+                length += currentFont.width + currentFont.spacing - currentFont.reducedWidthLowerCase;
+            } else {
+        		length += currentFont.width + currentFont.spacing;
+            }
+        }
+    } else {
+        length = (currentFont.width + currentFont.spacing) * text.length;
+    }
+    return length;
 };
 
 var palettiseSpriteSheet = function(spriteSheet, palette, transparencyIndex) {
@@ -306,8 +360,53 @@ var palettiseSpriteSheet = function(spriteSheet, palette, transparencyIndex) {
         }
         paletteSprites[idx] = spriteIndicies;
     }
-    
 };
+
+var createFontJson = function(spriteSheet, name, alphabet, w, h, spacing, reducedWidthLowerCase, baselineOffsets) {
+    if (!palettiseCanvas) {
+        palettiseCanvas = document.createElement("canvas");
+        document.body.appendChild(palettiseCanvas);
+        palettiseCanvas.style = "display: none";
+    }
+    let font = {
+        width: w,
+        height: h,
+        spacing: spacing,
+        reducedWidthLowerCase: reducedWidthLowerCase,
+        baselineOffsets: baselineOffsets
+    };
+    
+    w = w + spacing;
+    h = h + spacing;
+
+	palettiseCanvas.width = w;
+    palettiseCanvas.height = h;
+    let ctx = palettiseCanvas.getContext('2d');
+
+    let spriteCount = alphabet.length;
+    
+    for (let i = 0; i < spriteCount; i++) {
+        let sx = (i*w)%spriteSheet.width, 
+    		sy = h * Math.floor((i*w)/spriteSheet.width);
+    	ctx.clearRect(0, 0, w, h);
+        ctx.drawImage(spriteSheet, sx, sy, w, h, 0, 0, w, h);
+
+        let data = ctx.getImageData(0, 0, w - spacing, h - spacing).data;
+        // TODO: Update font rendering to read the spacing
+        let charData = []
+        for(let j = 0, n = data.length; j < n; j += 4) {
+            let alpha = data[j+3]
+            if (alpha > 0) {
+                charData.push(1);
+            } else {
+                charData.push(0);
+            }
+        }
+        font[alphabet[i]] = charData;
+    }
+    fonts[name] = font;
+    currentFont = font; 
+}
 
 Hestia.palette = function() {
 	return palette;
