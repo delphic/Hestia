@@ -153,7 +153,12 @@ var HestiaAudio = module.exports = function() {
         masterGainNode.gain.value = value;
     };
 
-    exports.playNote = function(octave, note, waveformIndex) {
+    // TODO: Try sequence of volumes and pitches using the same oscilator
+    // scheduling them in advance i.e. play SFX which specifies up to 32 notes
+    // with volumes (start with one instrument and then look a mixing it up) and 
+    // a playback spead
+
+    exports.playNote = function(octave, note, waveformIndex, duration, delay) {
         let freq = 0;
         if (octave > 0 && octave < noteTable.length) {
             freq = noteTable[octave][note];
@@ -169,17 +174,30 @@ var HestiaAudio = module.exports = function() {
         osc.connect(masterGainNode);
         // Would like to check out tracker implementations to see if this is 
         // how they do things or if there is anyway to reuse.
+        // Maybe we could disconnect the node or change the gain
         
         if (waveformIndex < waveforms.length) {
             osc.type = waveforms[waveformIndex];
         } else {
             // TODO: Support more than one custom type!
             osc.setPeriodicWave(customWaveform);
+            // Here are some tasy wavetables:
+            // https://github.com/GoogleChromeLabs/web-audio-samples/tree/gh-pages/samples/audio/wave-tables
         }
         
         osc.frequency.value = freq;
-        osc.start();
         
+        if (delay === undefined) {
+            delay = 0;
+        }
+        if (duration === undefined) {
+            // 120 bpm, 1 note
+            duration = 0.5;
+        }
+        
+        osc.start(audioContext.currentTime + delay);
+        osc.stop(audioContext.currentTime + delay + duration);
+
         oscList[octave][note] = osc;
         return osc;
     };
@@ -189,7 +207,6 @@ var HestiaAudio = module.exports = function() {
             let osc = oscList[octave][note];
             if (osc) {
                 osc.stop();
-                // Q: Do we need to call delete on the osc? 
             }
         }
     };
@@ -369,8 +386,12 @@ Hestia.init = function(config) {
 		loadSpriteSheet(config.spriteSheet.path, config.spriteSheet.spriteSize);
 	}
 	
-	// Set Fonts
-	currentFont = fonts["micro"];
+	// Set Font
+	if (config.font && config.font.path) {
+	    loadFont(config.font);
+	} else {
+    	currentFont = fonts["micro"];
+	}
 
 	// Set Tick Functions
 	if (config.update) {
@@ -475,9 +496,30 @@ var loadSpriteSheet = Hestia.loadSpriteSheet = function(path, spriteSize) {
 		    }
 		}, 60);
 	}).catch(function(error) {
-		console.log("Load Sprite Sheet Failed: " + error.message);
+		console.error("Load Sprite Sheet Failed: " + error.message);
 		lockCount -= 1;
 	});
+};
+
+var loadFont = Hestia.loadFont = function(font) {
+    lockCount += 1;
+    fontSheet = new Image();
+    fetch(font.path).then(function(response) {
+        return response.blob();
+    }).then(function(blob) {
+        fontSheet.src = URL.createObjectURL(blob);
+        let pollId = window.setInterval(function(){
+            // Hack to wait for src to finish
+            if (fontSheet.width > 0) {
+                createFontJson(fontSheet, font.name, font.alphabet, font.width, font.height, font.spacing, font.reducedWidthLowerCase, font.baselineOffsets);
+                lockCount -= 1;
+                window.clearInterval(pollId);
+            }
+        }, 60);
+    }).catch(function(error) {
+        console.error("Load Font Failed: " + error.message);
+        lockCount -= 1;
+    });
 };
 
 var loadPalette = Hestia.loadPalette = function(path, callback) {
@@ -516,9 +558,9 @@ var drawRect = Hestia.drawRect = function(x, y, w, h, c) {
 	ctx.fillRect(x + w - 1, y, 1, h);
 };
 
-var drawSprite = Hestia.drawSprite = function(idx, x, y, transpencyIndex) {
-    if (!transpencyIndex) {
-        transpencyIndex = 0;
+var drawSprite = Hestia.drawSprite = function(idx, x, y, transparencyIndex) {
+    if (!transparencyIndex) {
+        transparencyIndex = 0;
     }
 	let s = spriteSheet.spriteSize;
 	// Super naive palette based sprite rendering
@@ -526,7 +568,7 @@ var drawSprite = Hestia.drawSprite = function(idx, x, y, transpencyIndex) {
     for(let j = 0; j < s; j++) {
     	for(let i = 0; i < s; i++) {
     	    c = paletteSprites[idx][k++];
-    	    if (c != transpencyIndex) {
+    	    if (c != transparencyIndex) {
     	        setPixel(x+i, y+j, c);
     	    }
 	    }
@@ -541,6 +583,22 @@ var drawSprite = Hestia.drawSprite = function(idx, x, y, transpencyIndex) {
 	*/
 };
 
+var drawSpriteSection = Hestia.drawSpriteSection = function(idx, x, y, offsetX, offsetY, w, h, transparencyIndex) {
+    if (!transparencyIndex) {
+        transparencyIndex = 0;
+    }
+	let s = spriteSheet.spriteSize;
+    let k = 0, c = 0;
+    for(let j = 0; j < s; j++) {
+    	for(let i = 0; i < s; i++) {
+    	    c = paletteSprites[idx][k++];
+    	    if (c != transparencyIndex && i >= offsetX && i < offsetX + w && j >= offsetY && j < offsetY + h) {
+    	        setPixel(x+i-offsetX, y+j-offsetY, c);
+    	    }
+	    }
+	}
+};
+
 var clear = Hestia.clear = function(c) {
     setPaletteIndex(c);
 	ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -552,18 +610,47 @@ var drawText = Hestia.drawText = function(text, x, y, c) {
 		text = text.toUpperCase();
 	}
 	var n = currentFont.width * currentFont.height;
+	let offset = 0;
 	for(var i = 0, l = text.length; i < l; i++) {
 		var letter = text.substr(i,1);
 		if (letter == ' ' || !currentFont[letter]) {
+    		offset += currentFont.width + currentFont.spacing;
 			continue;
+		}
+		// Hacky Kerning
+		let xOffset = 0, yOffset = 0;
+		if (currentFont.reducedWidthLowerCase && letter.toUpperCase() != letter && letter != "m" && letter != "w") {
+		    xOffset = -currentFont.reducedWidthLowerCase;
+		}
+		if (currentFont.baselineOffsets && currentFont.baselineOffsets.includes(letter)) {
+		    yOffset = +1;
 		}
 		for (var p = 0; p < n; p++) {
 			if (currentFont[letter][p]) {
-				ctx.fillRect(x + i * (currentFont.width + currentFont.spacing) + p % currentFont.width, y + Math.floor(p / currentFont.width), 1, 1);
+				ctx.fillRect(
+				    x + offset + xOffset + p % currentFont.width, y + yOffset + Math.floor(p / currentFont.width), 1, 1);
 			}
 		}
+		offset += currentFont.width + currentFont.spacing + xOffset;
 	}
 	// It may be worth investigating if drawing the text to a canvas in the palette color and then using drawImage to draw the font might be faster.
+};
+
+var measureText = Hestia.measureText = function(text) {
+    let length = 0;
+    if (currentFont.reducedWidthLowerCase) {
+        for(var i = 0, l = text.length; i < l; i++) {
+            var letter = text[i];
+            if (currentFont[letter] && letter.toUpperCase() != letter && letter != "m" && letter != "w") {
+                length += currentFont.width + currentFont.spacing - currentFont.reducedWidthLowerCase;
+            } else {
+        		length += currentFont.width + currentFont.spacing;
+            }
+        }
+    } else {
+        length = (currentFont.width + currentFont.spacing) * text.length;
+    }
+    return length;
 };
 
 var palettiseSpriteSheet = function(spriteSheet, palette, transparencyIndex) {
@@ -629,8 +716,53 @@ var palettiseSpriteSheet = function(spriteSheet, palette, transparencyIndex) {
         }
         paletteSprites[idx] = spriteIndicies;
     }
-    
 };
+
+var createFontJson = function(spriteSheet, name, alphabet, w, h, spacing, reducedWidthLowerCase, baselineOffsets) {
+    if (!palettiseCanvas) {
+        palettiseCanvas = document.createElement("canvas");
+        document.body.appendChild(palettiseCanvas);
+        palettiseCanvas.style = "display: none";
+    }
+    let font = {
+        width: w,
+        height: h,
+        spacing: spacing,
+        reducedWidthLowerCase: reducedWidthLowerCase,
+        baselineOffsets: baselineOffsets
+    };
+    
+    w = w + spacing;
+    h = h + spacing;
+
+	palettiseCanvas.width = w;
+    palettiseCanvas.height = h;
+    let ctx = palettiseCanvas.getContext('2d');
+
+    let spriteCount = alphabet.length;
+    
+    for (let i = 0; i < spriteCount; i++) {
+        let sx = (i*w)%spriteSheet.width, 
+    		sy = h * Math.floor((i*w)/spriteSheet.width);
+    	ctx.clearRect(0, 0, w, h);
+        ctx.drawImage(spriteSheet, sx, sy, w, h, 0, 0, w, h);
+
+        let data = ctx.getImageData(0, 0, w - spacing, h - spacing).data;
+        // TODO: Update font rendering to read the spacing
+        let charData = []
+        for(let j = 0, n = data.length; j < n; j += 4) {
+            let alpha = data[j+3]
+            if (alpha > 0) {
+                charData.push(1);
+            } else {
+                charData.push(0);
+            }
+        }
+        font[alphabet[i]] = charData;
+    }
+    fonts[name] = font;
+    currentFont = font; 
+}
 
 Hestia.palette = function() {
 	return palette;
