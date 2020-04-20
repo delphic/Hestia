@@ -152,7 +152,12 @@ var HestiaAudio = module.exports = function() {
         masterGainNode.gain.value = value;
     };
 
-    exports.playNote = function(octave, note, waveformIndex) {
+    // TODO: Try sequence of volumes and pitches using the same oscilator
+    // scheduling them in advance i.e. play SFX which specifies up to 32 notes
+    // with volumes (start with one instrument and then look a mixing it up) and 
+    // a playback spead
+
+    exports.playNote = function(octave, note, waveformIndex, duration, delay) {
         let freq = 0;
         if (octave > 0 && octave < noteTable.length) {
             freq = noteTable[octave][note];
@@ -168,17 +173,30 @@ var HestiaAudio = module.exports = function() {
         osc.connect(masterGainNode);
         // Would like to check out tracker implementations to see if this is 
         // how they do things or if there is anyway to reuse.
+        // Maybe we could disconnect the node or change the gain
         
         if (waveformIndex < waveforms.length) {
             osc.type = waveforms[waveformIndex];
         } else {
             // TODO: Support more than one custom type!
             osc.setPeriodicWave(customWaveform);
+            // Here are some tasy wavetables:
+            // https://github.com/GoogleChromeLabs/web-audio-samples/tree/gh-pages/samples/audio/wave-tables
         }
         
         osc.frequency.value = freq;
-        osc.start();
         
+        if (delay === undefined) {
+            delay = 0;
+        }
+        if (duration === undefined) {
+            // 120 bpm, 1 note
+            duration = 0.5;
+        }
+        
+        osc.start(audioContext.currentTime + delay);
+        osc.stop(audioContext.currentTime + delay + duration);
+
         oscList[octave][note] = osc;
         return osc;
     };
@@ -188,7 +206,6 @@ var HestiaAudio = module.exports = function() {
             let osc = oscList[octave][note];
             if (osc) {
                 osc.stop();
-                // Q: Do we need to call delete on the osc? 
             }
         }
     };
