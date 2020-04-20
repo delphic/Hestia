@@ -218,9 +218,9 @@ var drawRect = Hestia.drawRect = function(x, y, w, h, c) {
 	ctx.fillRect(x + w - 1, y, 1, h);
 };
 
-var drawSprite = Hestia.drawSprite = function(idx, x, y, transpencyIndex) {
-    if (!transpencyIndex) {
-        transpencyIndex = 0;
+var drawSprite = Hestia.drawSprite = function(idx, x, y, transparencyIndex) {
+    if (!transparencyIndex) {
+        transparencyIndex = 0;
     }
 	let s = spriteSheet.spriteSize;
 	// Super naive palette based sprite rendering
@@ -228,7 +228,7 @@ var drawSprite = Hestia.drawSprite = function(idx, x, y, transpencyIndex) {
     for(let j = 0; j < s; j++) {
     	for(let i = 0; i < s; i++) {
     	    c = paletteSprites[idx][k++];
-    	    if (c != transpencyIndex) {
+    	    if (c != transparencyIndex) {
     	        setPixel(x+i, y+j, c);
     	    }
 	    }
@@ -241,6 +241,22 @@ var drawSprite = Hestia.drawSprite = function(idx, x, y, transpencyIndex) {
 	ctx.drawImage(spriteSheet, sx, sy, sw, sh, x, y, sw, sh);
 	// Note undefined behaviour edge wrapping (or lack there of)
 	*/
+};
+
+var drawSpriteSection = Hestia.drawSpriteSection = function(idx, x, y, offsetX, offsetY, w, h, transparencyIndex) {
+    if (!transparencyIndex) {
+        transparencyIndex = 0;
+    }
+	let s = spriteSheet.spriteSize;
+    let k = 0, c = 0;
+    for(let j = 0; j < s; j++) {
+    	for(let i = 0; i < s; i++) {
+    	    c = paletteSprites[idx][k++];
+    	    if (c != transparencyIndex && i >= offsetX && i < offsetX + w && j >= offsetY && j < offsetY + h) {
+    	        setPixel(x+i-offsetX, y+j-offsetY, c);
+    	    }
+	    }
+	}
 };
 
 var clear = Hestia.clear = function(c) {
