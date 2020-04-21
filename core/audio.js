@@ -23,7 +23,7 @@ var HestiaAudio = module.exports = function() {
     })();
     
     // Working initially from - https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Simple_synth
-    var audioContext = new window.AudioContext();
+    var audioContext = new (window.AudioContext || window.webkitAudioContext);
     var oscList = [];   // Has same structure as noteTable, index by octave and then dictionary by note
     var masterGainNode = null;
     var waveforms = [ "sine", "square", "sawtooth", "triangle" ];
