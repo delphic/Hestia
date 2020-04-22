@@ -1,26 +1,47 @@
-//var textBox;
-
 var init = function() {
-    // textBox = TextBox.create(48, 128, ["Lena", "Also Lena"], 4, 21, true);
 };
 
 var update = function() {
-    
     // textBox.update();
-    if (Hestia.mouseButtonDown(0)) {
-        Hestia.audio.playNote(4, "G", 1, 0.2);
-    } //else if (Hestia.mouseButtonUp(0)) {
+    //if (Hestia.mouseButtonDown(0)) {
+    //    Hestia.audio.playNote(4, "G", 1, 0.2); // A very good error tone :P
+    //} //else if (Hestia.mouseButtonUp(0)) {
     //    Hestia.audio.stopNote(4, "G");
     //}
 };
 
+// Lena Animation Fame Duration ms [ 400, 200, 100, 100, 100, 100, 200, 200, 100, 200, 100, 200, 200, 100, 100 ]  
+let animationIdx = 0;
+let animationTimes = [ 400, 200, 100, 100, 100, 100, 200, 200, 100, 200, 100, 200, 200, 100, 100 ];
+let ticks = 0;
 var draw = function() {
 	Hestia.clear(1);
 	drawPalette(0,0,4);
-	Hestia.drawSprite(0,48,48);
-	// textBox.draw();
-	
-	drawCursor();
+
+	Hestia.drawSprite(animationIdx, 256, 12);
+	ticks += 1;
+	if (ticks * (1000 / config.tickRate)  >= animationTimes[animationIdx]) {
+		animationIdx = (animationIdx + 1) % animationTimes.length;
+		ticks = 0;
+	}
+
+	let idx = 0;
+	let yPos = 24;
+	for (let idx = 0; idx < config.fonts.length; idx++) 
+	{
+		let spacing = config.fonts[idx].height + 2;
+		Hestia.setFont(config.fonts[idx].name);
+		Hestia.drawText("The quick brown fox, jumps over the lazy dog!?", 12, yPos, 21);
+		yPos += spacing;
+		Hestia.drawText("The quick brown fox, jumps over the lazy dog!?".toUpperCase(), 12, yPos, 21);
+		yPos += spacing;
+		Hestia.drawText("Also: \"12 birbs\", { <'need'> } to read; array[0].", 12, yPos, 21);
+		yPos += spacing;
+		Hestia.drawText("(4%2) + ((8*2)/4) - 2 = 2", 12, yPos, 21);		
+		yPos += 24;
+	}
+
+	drawCursor(); 
 };
 
 var drawPalette = function(x, y, size) {
@@ -48,9 +69,30 @@ var config = {
 	"tickRate": 60,
 	"palette": "palettes/aseprite.json",
 	"spriteSheet": { 
-		"path": "images/Lena_Test.png", 
+		"path": "images/LenaSpriteSheet.png", 
 		"spriteSize": 48
 	},
+	"fonts": [{
+		    "name": "micro",
+		    "default": true,
+		    "path": "assets/fonts/micro-font.png",
+		    "width": 4,
+		    "height": 6,
+		    "alphabet":  "ABCDEFGHIJKLMNOPQRSTUVabcdefghijklmnopqrstuvWXYZ0123456789_.,!?:; wxyz()[]{}'\"/\\|=-+*<>%"
+		},{
+			"name": "mini",
+		    "default": true,
+		    "path": "assets/fonts/mini-font.png",
+		    "width": 6,
+		    "height": 8,
+		    "alphabet":  "ABCDEFGHIJKLMNOPQRSTUVabcdefghijklmnopqrstuvWXYZ0123456789_.,!?:; wxyz()[]{}'\"/\\|=-+*<>%",
+		    "reducedWidth": [
+		    	{ "offset": 1, "chars": "abcdeghknopqstuvxyz.,!?:;=" },
+		    	{ "offset": 2, "chars": "fr0123456789 {}'\"/\\|-+*<>" },
+		    	{ "offset": 3, "chars": "jl()[]" },
+		    	{ "offset": 4, "chars": "i" }
+		    ]
+		}],
 	"keys": [ 37, 39, 38, 40, 90, 88], // left, right, up, down, z, x
 	"hideCursor": true
 };
@@ -79,94 +121,3 @@ window.addEventListener('blur', function(event){
     paused = true;
     Hestia.stop();
 });
-
-
-// Text Box 'class'
-// TODO: Move to separate file
-var TextBox = (function(){
-	var proto = {
-		padding: 3,
-		spacing: 1,
-		index: 0,
-		select: false,
-		boxed: true,
-		charWidth: 4,	// Technically this comes from font but only one font atm
-		charHeight: 6,	// ^^ as above
-		color: 0,
-		bgColor: 21,
-		draw: function() {
-			var indent = 0;
-			if (this.select) {
-				indent = 4;
-			}
-
-			var x = this.x, y = this.y, w = this.w, h = this.h,
-				padding = this.padding, spacing = this.spacing, lines = this.lines,
-				select = this.select, index = this.index, c = this.color, charHeight = this.charHeight;
-
-			if (this.boxed) {
-				Hestia.fillRect(x+1,y+1,w-2,h-2, this.bgColor);
-				Hestia.drawRect(x, y, w, h, c);					
-			}
-			
-			for(var i = 0; i < lines.length; i++) {
-				Hestia.drawText(lines[i], x+padding + indent, y + padding + (spacing + charHeight)*i, c);
-				
-				if (select && i == index) {
-					var px = x + padding;
-					var py = y + padding + (charHeight + spacing) * i + 2;
-					Hestia.setPixel(px, py, c);
-					Hestia.setPixel(px+1, py, c);
-					Hestia.setPixel(px, py+1, c);
-					Hestia.setPixel(px, py-1, c);
-				}
-			}		
-		},
-		update: function() {
-			if (this.select) {
-				if (Hestia.buttonUp(2)) {
-					this.index = (this.index - 1 + this.lines.length) % this.lines.length;
-				}
-				if (Hestia.buttonUp(3)) {
-					this.index = (this.index + 1) % this.lines.length;
-				}
-				// TODO: Need a callback for selecting an option with a button!
-			}
-		},
-		recalculateDimensions: function() {
-			this.w = this.calculateMinWidth();
-			this.h = this.calculateMinHeight();
-		},
-		calculateMinWidth: function() {
-			var indent = 0;
-			if (this.select) {
-				indent = 3;
-			}
-			var maxWidth = 0;
-			for(var i = 0; i < this.lines.length; i++) {
-				if (this.lines[i].length > maxWidth) {
-					maxWidth = this.lines[i].length;
-				}
-			}			
-			return this.charWidth * maxWidth + 2 * this.padding + indent;
-		},
-		calculateMinHeight: function() {
-			return 2 * this.padding + this.lines.length*(this.charHeight+this.spacing) - (this.spacing+1);
-		}
-	};
-
-	// Could probably take parameters object as it's a create
-	var create = function(x, y, lines, color, bgColor, select) {
-		var textBox = Object.create(proto);
-		textBox.x = x;
-		textBox.y = y;
-		textBox.lines = lines;
-		textBox.color = color;
-		textBox.bgColor = bgColor;
-		textBox.select = select;
-		textBox.recalculateDimensions();
-		return textBox;
-	};
-
-	return { create: create };
-})();

@@ -235,118 +235,14 @@ var HestiaAudio = module.exports = function() {
     return exports;
 }();
 },{}],2:[function(require,module,exports){
-// Arguably this should be a json file like palettes
-module.exports = {
-	"micro": {
-		"width": 3,
-		"height": 5, /* Arguably should make this 6 and shift down a bunch of the lower case and some punctuation */
-		"spacing": 1,
-		/* It occurs to me these could become numbers and you could bitshift to read the pixels... */
-		/* http://2ality.com/2012/04/number-encoding.html */
-		/* Should probably look at "building the game" by Brandon Jones - he did some bitwise storage */
-		/* https://blog.tojicode.com/search?q=building+the+game */
-		/* https://blog.tojicode.com/2011/10/building-game-part-2-model-format.html#more */
-		"A": [1,1,1,1,0,1,1,1,1,1,0,1,1,0,1],
-		"B": [1,1,0,1,0,1,1,1,0,1,0,1,1,1,0],
-		"C": [1,1,1,1,0,0,1,0,0,1,0,0,1,1,1],
-		"D": [1,1,0,1,0,1,1,0,1,1,0,1,1,1,0],
-		"E": [1,1,1,1,0,0,1,1,1,1,0,0,1,1,1],
-		"F": [1,1,1,1,0,0,1,1,0,1,0,0,1,0,0],
-		"G": [1,1,1,1,0,0,1,0,1,1,0,1,1,1,1],
-		"H": [1,0,1,1,0,1,1,1,1,1,0,1,1,0,1],
-		"I": [1,1,1,0,1,0,0,1,0,0,1,0,1,1,1],
-		"J": [1,1,1,0,1,0,0,1,0,0,1,0,1,1,0],
-		"K": [1,0,1,1,0,1,1,1,0,1,0,1,1,0,1],
-		"L": [1,0,0,1,0,0,1,0,0,1,0,0,1,1,1],
-		"M": [1,0,1,1,1,1,1,1,1,1,0,1,1,0,1],
-		"N": [1,1,1,1,0,1,1,0,1,1,0,1,1,0,1],
-		"O": [1,1,1,1,0,1,1,0,1,1,0,1,1,1,1],
-		"P": [1,1,1,1,0,1,1,1,1,1,0,0,1,0,0],
-		"Q": [1,1,1,1,0,1,1,0,1,1,1,0,0,1,1],
-		"R": [1,1,0,1,0,1,1,1,0,1,0,1,1,0,1],
-		"S": [1,1,1,1,0,0,1,1,1,0,0,1,1,1,1],
-		"T": [1,1,1,0,1,0,0,1,0,0,1,0,0,1,0],
-		"U": [1,0,1,1,0,1,1,0,1,1,0,1,1,1,1],
-		"V": [1,0,1,1,0,1,1,0,1,1,0,1,0,1,0],
-		"W": [1,0,1,1,0,1,1,1,1,1,1,1,1,0,1],
-		"X": [1,0,1,1,0,1,0,1,0,1,0,1,1,0,1],
-		"Y": [1,0,1,1,0,1,1,1,1,0,0,1,1,1,1],
-		"Z": [1,1,1,0,0,1,0,1,0,1,0,0,1,1,1],
-		"_": [0,0,0,0,0,0,0,0,0,0,0,0,1,1,1],
-		"1": [0,1,0,1,1,0,0,1,0,0,1,0,0,1,0],
-		"2": [1,1,0,0,0,1,0,1,0,1,0,0,1,1,1],
-		"3": [1,1,0,0,0,1,0,1,1,0,0,1,1,1,0],
-		"4": [1,0,1,1,0,1,1,1,1,0,0,1,0,0,1],
-		"5": [1,1,1,1,0,0,1,1,0,0,0,1,1,1,0],
-		"6": [0,1,1,1,0,0,1,1,1,1,0,1,1,1,1],
-		"7": [1,1,1,0,0,1,0,0,1,0,1,0,0,1,0],
-		"8": [1,1,1,1,0,1,1,1,1,1,0,1,1,1,1],
-		"9": [1,1,1,1,0,1,1,1,1,0,0,1,0,0,1],
-		"0": [0,1,0,1,0,1,1,0,1,1,0,1,0,1,0],
-		"a": [0,0,0,0,1,1,1,0,1,1,1,1,0,0,1],
-		"b": [1,0,0,1,1,0,1,0,1,1,0,1,1,1,1],
-		"c": [0,0,0,0,1,1,1,0,0,1,0,0,0,1,1],
-		"d": [0,0,1,0,1,1,1,0,1,1,0,1,0,1,1],
-		"e": [0,0,0,0,1,0,1,0,1,1,1,0,0,1,1],
-		"f": [0,1,1,1,0,0,1,1,0,1,0,0,1,0,0],
-		/*"g": [0,1,1,1,0,1,1,1,1,0,0,1,1,1,0],*/
-		"g": [0,0,0,1,1,1,1,0,0,1,0,1,1,1,1],
-		"h": [1,0,0,1,1,0,1,0,1,1,0,1,1,0,1],
-		"i": [0,1,0,0,0,0,0,1,0,0,1,0,0,1,0],
-		"j": [0,1,0,0,0,0,0,1,0,0,1,0,1,0,0],
-		"k": [1,0,0,1,0,1,1,1,0,1,0,1,1,0,1],
-		"l": [0,1,0,0,1,0,0,1,0,0,1,0,0,0,1],
-		"m": [0,0,0,1,0,1,1,1,1,1,0,1,1,0,1],
-		"n": [0,0,0,1,1,0,1,0,1,1,0,1,1,0,1],
-		"o": [0,0,0,1,1,0,1,0,1,1,0,1,0,1,1],
-		"p": [0,0,0,1,1,0,1,0,1,1,1,1,1,0,0,/*1,0,0*/],
-		"q": [0,0,0,0,1,1,1,0,1,1,1,1,0,0,1,/*0,0,1*/],
-		"r": [0,0,0,1,0,1,1,1,0,1,0,0,1,0,0],
-		"s": [0,0,0,0,1,1,1,1,0,0,0,1,1,1,0],
-		"t": [0,1,0,0,1,1,0,1,0,0,1,0,0,0,1],
-		"u": [0,0,0,1,0,1,1,0,1,1,0,1,1,1,1],
-		"v": [0,0,0,1,0,1,1,0,1,1,0,1,0,1,0],
-		"w": [0,0,0,1,0,1,1,0,1,1,1,1,1,0,1],
-		"x": [0,0,0,1,0,1,0,1,0,0,1,0,1,0,1],
-		"y": [0,0,0,/*1,0,1,*/1,0,1,0,1,1,0,0,1,1,1,0],
-		"z": [0,0,0,1,1,1,0,1,0,1,0,0,1,1,1],
-		".": [0,0,0,0,0,0,0,0,0,0,0,0,0,1,0],
-		",": [0,0,0,0,0,0,0,0,0,0,1,0,1,0,0],
-		"!": [0,1,0,0,1,0,0,1,0,0,0,0,0,1,0],
-		"?": [0,1,1,0,0,1,0,1,1,0,0,0,0,1,0],
-		":": [0,0,0,0,1,0,0,0,0,0,1,0,0,0,0],
-		";": [0,0,0,0,1,0,0,0,0,0,1,0,1,0,0],
-		"(": [0,1,0,1,0,0,1,0,0,1,0,0,0,1,0],
-		")": [1,0,0,0,1,0,0,1,0,0,1,0,1,0,0],
-		"[": [1,1,0,1,0,0,1,0,0,1,0,0,1,1,0],
-		"]": [1,1,0,0,1,0,0,1,0,0,1,0,1,1,0],
-		"{": [0,1,1,0,1,0,1,0,0,0,1,0,0,1,1],
-		"}": [1,1,0,0,1,0,0,0,1,0,1,0,1,1,0],
-		"'": [0,1,0,0,1,0,0,0,0,0,0,0,0,0,0],
-		"\"": [1,0,1,1,0,1,0,0,0,0,0,0,0,0,0],
-		"/": [0,0,1,0,0,1,0,1,0,0,1,0,1,0,0],
-		"\\": [1,0,0,1,0,0,0,1,0,0,1,0,0,0,1],
-		"|": [0,1,0,0,1,0,0,1,0,0,1,0,0,1,0],
-		"=": [0,0,0,1,1,1,0,0,0,1,1,1,0,0,0],
-		"-": [0,0,0,0,0,0,1,1,1,0,0,0,0,0,0],
-		"+": [0,0,0,0,1,0,1,1,1,0,1,0,0,0,0],
-		"*": [1,0,1,0,1,0,1,0,1,0,0,0,0,0,0],
-		"<": [0,0,0,0,1,0,1,0,0,0,1,0,0,0,0],
-		">": [0,0,0,0,1,0,0,0,1,0,1,0,0,0,0],
-		/* This was transcribed by hand but it'd be good to make a util to read an image and output this data */
-		/* Could use a variations on the palettise function, just need to check the alpha channel tho! */ 
-	}
-};
-},{}],3:[function(require,module,exports){
 // PICO-8 Inspired HTML5 Canvas Renderer
 Hestia = {};
 
 var canvas, ctx, palette, paletteIndex, spriteSheet, hideCursor;
 var tickRate, ticks, lastTime, elapsed, pause, lockCount = 0;
-var currentFont;
+var fonts = {}, currentFont;
 var palettiseCanvas, paletteSprites = []; // sprites by index in palette indices
 
-var fonts = require("./fonts.js");
 var input = require("./input.js");
 var audio = Hestia.audio = require('./audio.js');   // Exposing interface for testing / play
 
@@ -387,10 +283,31 @@ Hestia.init = function(config) {
 	}
 	
 	// Set Font
-	if (config.font && config.font.path) {
+	let loadingFonts = 0;
+	if (config.fonts) {
+		for (let i = 0, l = config.fonts.length; i < l; i++) {
+			if (config.fonts[i].path) {
+				loadingFonts += 1;
+				loadFont(config.fonts[i]);
+			}
+		}
+	}
+	else if (config.font && config.font.path) {
+		loadingFonts = 1;
 	    loadFont(config.font);
-	} else {
-    	currentFont = fonts["micro"];
+	}
+
+	if (loadingFonts == 0) {
+		// Could arguably bundle this data in font.js like we used to
+		loadFont({
+		    "name": "micro",
+		    "default": true,
+		    "path": "assets/fonts/micro-font.png",
+		    "width": 4,
+		    "height": 6,
+		    "spacing": 1,
+		    "alphabet":  "ABCDEFGHIJKLMNOPQRSTUVabcdefghijklmnopqrstuvWXYZ0123456789_.,!?:; wxyz()[]{}'\"/\\|=-+*<>"
+		});
 	}
 
 	// Set Tick Functions
@@ -503,7 +420,7 @@ var loadSpriteSheet = Hestia.loadSpriteSheet = function(path, spriteSize) {
 
 var loadFont = Hestia.loadFont = function(font) {
     lockCount += 1;
-    fontSheet = new Image();
+    let fontSheet = new Image();
     fetch(font.path).then(function(response) {
         return response.blob();
     }).then(function(blob) {
@@ -511,7 +428,7 @@ var loadFont = Hestia.loadFont = function(font) {
         let pollId = window.setInterval(function(){
             // Hack to wait for src to finish
             if (fontSheet.width > 0) {
-                createFontJson(fontSheet, font.name, font.alphabet, font.width, font.height, font.spacing, font.reducedWidthLowerCase, font.baselineOffsets);
+                createFont(fontSheet, font);
                 lockCount -= 1;
                 window.clearInterval(pollId);
             }
@@ -609,31 +526,41 @@ var drawText = Hestia.drawText = function(text, x, y, c) {
 	if (currentFont.capsOnly) {
 		text = text.toUpperCase();
 	}
+
 	var n = currentFont.width * currentFont.height;
-	let offset = 0;
+	let offset = 0;	// offset based on text so far
 	for(var i = 0, l = text.length; i < l; i++) {
 		var letter = text.substr(i,1);
-		if (letter == ' ' || !currentFont[letter]) {
+
+		if (!currentFont[letter]) {
     		offset += currentFont.width + currentFont.spacing;
 			continue;
 		}
-		// Hacky Kerning
+
+		let w = currentFont.width;
+		if (currentFont[letter].width) {
+			// some characters have specific widths
+			w = currentFont[letter].width;
+		}
+
 		let xOffset = 0, yOffset = 0;
-		if (currentFont.reducedWidthLowerCase && letter.toUpperCase() != letter && letter != "m" && letter != "w") {
-		    xOffset = -currentFont.reducedWidthLowerCase;
-		}
-		if (currentFont.baselineOffsets && currentFont.baselineOffsets.includes(letter)) {
-		    yOffset = +1;
-		}
 		for (var p = 0; p < n; p++) {
-			if (currentFont[letter][p]) {
-				ctx.fillRect(
-				    x + offset + xOffset + p % currentFont.width, y + yOffset + Math.floor(p / currentFont.width), 1, 1);
+			xOffset = p % currentFont.width;				// x offset for this char
+			yOffset = Math.floor(p / currentFont.width);	// y offset for this char
+			if (currentFont[letter].data[p]) {
+				ctx.fillRect(x + offset + xOffset, y + yOffset, 1, 1);
 			}
 		}
-		offset += currentFont.width + currentFont.spacing + xOffset;
+		offset += w + currentFont.spacing;
 	}
 	// It may be worth investigating if drawing the text to a canvas in the palette color and then using drawImage to draw the font might be faster.
+};
+
+var setFont = Hestia.setFont = function(fontName) {
+	// Would be nice to decouple this from loading so you can set default font in init rather than using "default" property on font config
+	if (fonts.hasOwnProperty(fontName)) {
+		currentFont = fonts[fontName];
+	}
 };
 
 var measureText = Hestia.measureText = function(text) {
@@ -718,37 +645,41 @@ var palettiseSpriteSheet = function(spriteSheet, palette, transparencyIndex) {
     }
 };
 
-var createFontJson = function(spriteSheet, name, alphabet, w, h, spacing, reducedWidthLowerCase, baselineOffsets) {
+var createFont = function(spriteSheet, fontConfig) {
     if (!palettiseCanvas) {
         palettiseCanvas = document.createElement("canvas");
         document.body.appendChild(palettiseCanvas);
         palettiseCanvas.style = "display: none";
     }
+
+    w = fontConfig.width;
+    h = fontConfig.height;
+
+    let spacing = 0;
+    if (fontConfig.spacing != undefined) {
+    	spacing = fontConfig.spacing;
+    }
+
     let font = {
         width: w,
         height: h,
         spacing: spacing,
-        reducedWidthLowerCase: reducedWidthLowerCase,
-        baselineOffsets: baselineOffsets
     };
-    
-    w = w + spacing;
-    h = h + spacing;
+
 
 	palettiseCanvas.width = w;
     palettiseCanvas.height = h;
     let ctx = palettiseCanvas.getContext('2d');
 
-    let spriteCount = alphabet.length;
+    let spriteCount = fontConfig.alphabet.length;
     
     for (let i = 0; i < spriteCount; i++) {
-        let sx = (i*w)%spriteSheet.width, 
-    		sy = h * Math.floor((i*w)/spriteSheet.width);
+        let sx = (i * w) % spriteSheet.width, 
+    		sy = h * Math.floor((i * w) / spriteSheet.width);
     	ctx.clearRect(0, 0, w, h);
         ctx.drawImage(spriteSheet, sx, sy, w, h, 0, 0, w, h);
 
-        let data = ctx.getImageData(0, 0, w - spacing, h - spacing).data;
-        // TODO: Update font rendering to read the spacing
+        let data = ctx.getImageData(0, 0, w, h).data;
         let charData = []
         for(let j = 0, n = data.length; j < n; j += 4) {
             let alpha = data[j+3]
@@ -758,10 +689,25 @@ var createFontJson = function(spriteSheet, name, alphabet, w, h, spacing, reduce
                 charData.push(0);
             }
         }
-        font[alphabet[i]] = charData;
+
+        let letter = fontConfig.alphabet[i];
+        let charObj = {};
+        // Look for reduced width characters
+        if (fontConfig.reducedWidth && fontConfig.reducedWidth.length > 0) {
+        	for (let k = 0, m = fontConfig.reducedWidth.length; k < m; k++) {
+        		if (fontConfig.reducedWidth[k].chars.includes(letter)) {
+        			charObj.width = font.width - fontConfig.reducedWidth[k].offset;
+        			break;
+        		}
+        	}
+        }
+        charObj.data = charData;
+        font[letter] = charObj;
     }
-    fonts[name] = font;
-    currentFont = font; 
+    fonts[fontConfig.name] = font;
+    if (!currentFont || fontConfig.default) {
+		currentFont = font;     	
+    }
 }
 
 Hestia.palette = function() {
@@ -794,7 +740,7 @@ var setPaletteIndex = function(c) {
 		ctx.fillStyle = palette[c];
 	}
 };
-},{"./audio.js":1,"./fonts.js":2,"./input.js":4}],4:[function(require,module,exports){
+},{"./audio.js":1,"./input.js":3}],3:[function(require,module,exports){
 var Input = module.exports = function() {
 	var exports = {};
 
@@ -911,4 +857,4 @@ var Input = module.exports = function() {
 
 	return exports;
 }();
-},{}]},{},[3]);
+},{}]},{},[2]);
