@@ -12,7 +12,9 @@ var draw = function() {
 	Hestia.clear(1);
 	drawPalette(0,0,4);
 
+    Hestia.outlineSprite(animationIdx, 12, 12, 0);
 	Hestia.drawSprite(animationIdx, 12, 12);
+
 	ticks += 1;
 	if (ticks * (1000 / config.tickRate)  >= animationTimes[animationIdx]) {
 		animationIdx = (animationIdx + 1) % animationTimes.length;

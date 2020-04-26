@@ -245,6 +245,7 @@ var drawSprite = Hestia.drawSprite = function(idx, x, y, transparencyIndex) {
 	let s = spriteSheet.spriteSize;
 	// Super naive palette based sprite rendering
 	let k = 0, c = 0;
+	// Might be faster to iterate over k and calculate j and i
     for(let j = 0; j < s; j++) {
     	for(let i = 0; i < s; i++) {
     	    c = paletteSprites[idx][k++];
@@ -253,16 +254,59 @@ var drawSprite = Hestia.drawSprite = function(idx, x, y, transparencyIndex) {
     	    }
 	    }
 	}
-	/* Draw Image Method
-	let sx = (idx*s)%spriteSheet.width, 
-		sy = s * Math.floor((idx*s)/spriteSheet.width),
-		sw = s*1, sh = s*1; // Only supporting 1:1 scale atm
-	// Note scaling using drawImage is not recommended for performance
-	ctx.drawImage(spriteSheet, sx, sy, sw, sh, x, y, sw, sh);
-	// Note undefined behaviour edge wrapping (or lack there of)
-	*/
 };
 
+var fillSprite = Hestia.fillSprite = function(idx, x, y, c, transparencyIndex) {
+    if (!transparencyIndex) {
+        transparencyIndex = 0;
+    }
+    setPaletteIndex(c);
+	let s = spriteSheet.spriteSize;
+	let k = 0;
+    for(let j = 0; j < s; j++) {
+    	for(let i = 0; i < s; i++) {
+    	    if (paletteSprites[idx][k++] != transparencyIndex) {
+                ctx.fillRect(x+i,y+j,1,1);
+    	    }
+	    }
+	}
+};
+
+var outlineSprite = Hestia.outlineSprite = function(idx, x, y, c, transparencyIndex) {
+    if (!transparencyIndex) {
+        transparencyIndex = 0;
+    }
+    setPaletteIndex(c);
+	let s = spriteSheet.spriteSize;
+	let k = 0;
+    for(let j = 0; j < s; j++) {
+    	for(let i = 0; i < s; i++) {
+    	    if (paletteSprites[idx][k] != transparencyIndex) {
+    	        // Question - is this going to be faster than 4 x fillSprite? with offsets?
+    	        // There's less ctx.fill calls, but this isn't CPU prediction friendly
+    	        // Left
+    	        if (i == 0 || paletteSprites[idx][k-1] == transparencyIndex) {
+                    ctx.fillRect(x+i-1,y+j,1,1);
+    	        }
+    	        // Right
+    	        if (i == s-1 || paletteSprites[idx][k+1] == transparencyIndex) {
+    	            ctx.fillRect(x+i+1,y+j,1,1);
+    	        }
+    	        // Up
+    	        if (j == 0 || paletteSprites[idx][k-s] == transparencyIndex) {
+    	            ctx.fillRect(x+i,y+j-1,1,1);
+    	        }
+    	        // Down
+    	        if (j == s-1 || paletteSprites[idx][k+s] == transparencyIndex) {
+    	            ctx.fillRect(x+i,y+j+1,1,1);
+    	        }
+    	    }
+    	    k++;
+	    }
+	}
+};
+
+// Would probably be better to be able define subsections of sprites at import, rather than do it during rendering!
 var drawSpriteSection = Hestia.drawSpriteSection = function(idx, x, y, offsetX, offsetY, w, h, transparencyIndex) {
     if (!transparencyIndex) {
         transparencyIndex = 0;
@@ -275,6 +319,56 @@ var drawSpriteSection = Hestia.drawSpriteSection = function(idx, x, y, offsetX, 
     	    if (c != transparencyIndex && i >= offsetX && i < offsetX + w && j >= offsetY && j < offsetY + h) {
     	        setPixel(x+i-offsetX, y+j-offsetY, c);
     	    }
+	    }
+	}
+};
+
+var fillSpriteSection = Hestia.fillSpriteSection = function(idx, x, y, offsetX, offsetY, w, h, c, transparencyIndex) {
+    if (!transparencyIndex) {
+        transparencyIndex = 0;
+    }
+    setPaletteIndex(c);
+	let s = spriteSheet.spriteSize;
+    let k = 0;
+    for(let j = 0; j < s; j++) {
+    	for(let i = 0; i < s; i++) {
+    	    if (paletteSprites[idx][k++] != transparencyIndex && i >= offsetX && i < offsetX + w && j >= offsetY && j < offsetY + h) {
+                ctx.fillRect(x+i-offsetX,y+j-offsetY,1,1);
+    	    }
+	    }
+	}
+};
+
+var outlineSpriteSection = Hestia.outlineSpriteSection = function(idx, x, y, offsetX, offsetY, w, h, c, transparencyIndex) {
+    if (!transparencyIndex) {
+        transparencyIndex = 0;
+    }
+    setPaletteIndex(c);
+	let s = spriteSheet.spriteSize;
+    let k = 0;
+    for(let j = 0; j < s; j++) {
+    	for(let i = 0; i < s; i++) {
+    	    if (paletteSprites[idx][k] != transparencyIndex) {
+    	        // Question - is this going to be faster than 4 x fillSprite? with offsets?
+    	        // There's less ctx.fill calls, but this isn't CPU prediction friendly
+    	        // Left
+    	        if (i == 0 || paletteSprites[idx][k-1] == transparencyIndex) {
+                    ctx.fillRect(x+i-1,y+j,1,1);
+    	        }
+    	        // Right
+    	        if (i == s-1 || paletteSprites[idx][k+1] == transparencyIndex) {
+    	            ctx.fillRect(x+i+1,y+j,1,1);
+    	        }
+    	        // Up
+    	        if (j == 0 || paletteSprites[idx][k-s] == transparencyIndex) {
+    	            ctx.fillRect(x+i,y+j-1,1,1);
+    	        }
+    	        // Down
+    	        if (j == s-1 || paletteSprites[idx][k+s] == transparencyIndex) {
+    	            ctx.fillRect(x+i,y+j+1,1,1);
+    	        }
+    	    }
+    	    k++;
 	    }
 	}
 };
