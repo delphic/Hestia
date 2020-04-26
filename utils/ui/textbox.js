@@ -16,6 +16,7 @@ var TextBox = module.exports = (function(){
 		bgColor: 21,
 		indent: 0,
 		align: 0,
+		buttons: { left: 0, right: 1, up: 2, down: 3, confirm: 4, cancel: 5 },
 		grid: undefined,
 		draw: function() {
 		    if (this.dirty) {
@@ -68,36 +69,38 @@ var TextBox = module.exports = (function(){
 			Hestia.setPixel(px, py-2, c);
 		},
 		update: function() {
+		    // This assumes navigation, confirm and cancel buttons
+		    // TODO This should be configurable
 			if (this.select) {
 			    if (this.grid) {
 			        let targetIndex = this.index;
-                    if (Hestia.buttonUp(0)) {
+                    if (Hestia.buttonUp(this.buttons.left)) {
                         targetIndex = this.index - this.grid[0];
                     }
-                    if (Hestia.buttonUp(1)) {
+                    if (Hestia.buttonUp(this.buttons.right)) {
                         targetIndex = this.index + this.grid[0];   
                     }
-                    if (Hestia.buttonUp(2) && this.index % this.grid[0] != 0) {
+                    if (Hestia.buttonUp(this.buttons.up) && this.index % this.grid[0] !== 0) {
                         targetIndex = this.index - 1; 
                     }
-                    if (Hestia.buttonUp(3) && this.index % this.grid[0] != this.grid[1] - 1) {
+                    if (Hestia.buttonUp(this.buttons.down) && this.index % this.grid[0] !== this.grid[1] - 1) {
                         targetIndex = this.index + 1;
                     }
                     if (targetIndex >= 0 && targetIndex < this.lines.length) {
                         this.index = targetIndex;
                     }
 			    } else {
-    				if (Hestia.buttonUp(2)) {
+    				if (Hestia.buttonUp(this.buttons.up)) {
     					this.index = (this.index - 1 + this.lines.length) % this.lines.length;
     				}
-    				if (Hestia.buttonUp(3)) {
+    				if (Hestia.buttonUp(this.buttons.down)) {
     					this.index = (this.index + 1) % this.lines.length;
-    				}			        
+    				}
 			    }
-				if (Hestia.buttonUp(4) && this.actions[this.index]) {
+				if (Hestia.buttonUp(this.buttons.confirm) && this.actions[this.index]) {
 				    this.actions[this.index]();
 				}
-				if (Hestia.buttonUp(5) && this.cancelAction) {
+				if (Hestia.buttonUp(this.buttons.cancel) && this.cancelAction) {
 				    this.cancelAction();
 				}
 			}
@@ -185,6 +188,9 @@ var TextBox = module.exports = (function(){
 		}
 		if (params.charHeight !== undefined) {
 		    textBox.charHeight = params.charHeight;
+		}
+		if (params.buttons !== undefined) {
+		    textBox.buttons = params.buttons;
 		}
 		textBox.dirty = true;
 		return textBox;
