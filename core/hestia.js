@@ -127,6 +127,10 @@ Hestia.palette = function() {
 	return palette;
 };
 
+Hestia.notifyPaletteChange = function() {
+    ctx.fillStyle = palette[paletteIndex];  // Ensure correct fillStyle
+};
+
 Hestia.tickCount = function() {
     return ticks;
 };
@@ -167,8 +171,10 @@ Hestia.mouseButtonUp = function(btn) {
 // Loading
 // https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
 var loadSpriteSheet = Hestia.loadSpriteSheet = function(path, spriteSize) {
-	// (note img currently, no pallete enforcement - instead matched on color)
-	// TODO: convert to use indexed image format
+    // TODO: should ideally take a palette name arguement and default to current
+    // will require storing palettes by name and knowing if there's a request for
+    // a given palette in progress during init
+	// TODO: convert to support use of indexed image format
 	lockCount += 1;
 	spriteSheet = new Image();
 	spriteSheet.spriteSize = spriteSize;
