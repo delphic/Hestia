@@ -1,6 +1,9 @@
 "use strict";
 var TextBox = module.exports = (function(){
     var exports = {};
+    
+    var Hestia = window.Hestia;
+	
 	var proto = {
 		padding: 3,
 		spacing: 1,
@@ -130,6 +133,10 @@ var TextBox = module.exports = (function(){
 	    proto.charWidth = width;
 	    proto.charHeight = height;
 	};
+	
+	var setHestia = exports.setHestia = function(hestiaInstance) {
+        Hestia = hestiaInstance;
+    };
 	
 	var calculateLines = exports.calculateLines = function(text, width) {
 	    var lines = [];

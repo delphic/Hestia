@@ -127,6 +127,10 @@ Hestia.palette = function() {
 	return palette;
 };
 
+Hestia.tickCount = function() {
+    return ticks;
+};
+
 // Input Querying
 // Keeping the public API flat 
 Hestia.button = function(btn) {

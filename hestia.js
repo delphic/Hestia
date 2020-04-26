@@ -238,7 +238,8 @@ var HestiaAudio = module.exports = function() {
 // Make me a global 
 Hestia = require('./hestia.js');
 HestiaUI = require('../utils/ui.js');
-},{"../utils/ui.js":5,"./hestia.js":3}],3:[function(require,module,exports){
+Routines = require('../utils/routines.js');
+},{"../utils/routines.js":5,"../utils/ui.js":6,"./hestia.js":3}],3:[function(require,module,exports){
 // PICO-8 Inspired HTML5 Canvas Renderer
 "use strict";
 var Hestia = module.exports = {};
@@ -366,6 +367,10 @@ Hestia.stop = function() {
 
 Hestia.palette = function() {
 	return palette;
+};
+
+Hestia.tickCount = function() {
+    return ticks;
 };
 
 // Input Querying
@@ -956,6 +961,43 @@ var Input = module.exports = function() {
 	return exports;
 }();
 },{}],5:[function(require,module,exports){
+// Simple predicate based routines, that run for a number of updates.
+// Consider use of https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Iterators_and_Generators
+var Routines = module.exports = (function(){
+    var exports = {};
+    
+    var routines = [], routineStarts = [], routineTick = 0;
+    var add = exports.add = function(predicate) {
+        if (!predicate(0)) {
+            routines.push(predicate);
+            routineStarts.push(routineTick);
+        }
+    };
+    var remove = exports.remove = function(i) {
+        routines.splice(i, 1);
+        routineStarts.splice(i, 1);
+    };
+    var update = exports.update = function() {
+        // Don't worry about overflow, it'd have to run 476 years at 60 FPS
+        routineTick++;
+        for (let i = routines.length - 1; i >= 0; i--) {
+            if (routines[i](routineTick - routineStarts[i])) {
+                remove(i);
+            }
+        }
+    };
+    var reset = exports.reset = function() {
+        routineTick = 0;
+    };
+    var clear = exports.clear = function() {
+        routineTick = 0;
+        routines.length = 0;
+        routineStarts.length = 0;
+    };
+    
+    return exports;
+})();
+},{}],6:[function(require,module,exports){
 "use strict";
 var HestiaUI = module.exports = (function(){
     var exports = {};
@@ -963,10 +1005,11 @@ var HestiaUI = module.exports = (function(){
     exports.ProgressBar = require('./ui/progressbar.js');
     return exports;
 })();
-},{"./ui/progressbar.js":6,"./ui/textbox.js":7}],6:[function(require,module,exports){
+},{"./ui/progressbar.js":7,"./ui/textbox.js":8}],7:[function(require,module,exports){
 "use strict";
 var ProgressBar = module.exports = (function() {
     var exports = {};
+    var Hestia = window.Hestia;
     var proto = {
         x: 0,
         y: 0,
@@ -990,6 +1033,10 @@ var ProgressBar = module.exports = (function() {
                 Hestia.fillRect(xOffset + this.x + this.borderSize, this.y + this.borderSize, Math.floor(this.value * this.width), this.height, this.barColor);
             }
         }
+    };
+    
+    var setHestia = exports.setHestia = function(hestiaInstance) {
+        Hestia = hestiaInstance;
     };
     
     var create = exports.create = function(params) {
@@ -1017,10 +1064,13 @@ var ProgressBar = module.exports = (function() {
     
     return exports;
 })();
-},{}],7:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 "use strict";
 var TextBox = module.exports = (function(){
     var exports = {};
+    
+    var Hestia = window.Hestia;
+	
 	var proto = {
 		padding: 3,
 		spacing: 1,
@@ -1150,6 +1200,10 @@ var TextBox = module.exports = (function(){
 	    proto.charWidth = width;
 	    proto.charHeight = height;
 	};
+	
+	var setHestia = exports.setHestia = function(hestiaInstance) {
+        Hestia = hestiaInstance;
+    };
 	
 	var calculateLines = exports.calculateLines = function(text, width) {
 	    var lines = [];

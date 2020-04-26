@@ -1,6 +1,7 @@
 "use strict";
 var ProgressBar = module.exports = (function() {
     var exports = {};
+    var Hestia = window.Hestia;
     var proto = {
         x: 0,
         y: 0,
@@ -24,6 +25,10 @@ var ProgressBar = module.exports = (function() {
                 Hestia.fillRect(xOffset + this.x + this.borderSize, this.y + this.borderSize, Math.floor(this.value * this.width), this.height, this.barColor);
             }
         }
+    };
+    
+    var setHestia = exports.setHestia = function(hestiaInstance) {
+        Hestia = hestiaInstance;
     };
     
     var create = exports.create = function(params) {

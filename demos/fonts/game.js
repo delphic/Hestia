@@ -1,13 +1,40 @@
+var progressBar;
+
+var colorCycleRoutine = function(elapsed) {
+    if (elapsed >= 100) {
+        let c = (progressBar.barColor + 1) % Hestia.palette().length;
+        if (c == 1) {
+            c += 1; // Skip clear colour
+        }
+        progressBar.barColor = c;
+        Routines.add(colorCycleRoutine);
+        return true;
+    }
+    return false;
+};
+
+
 var init = function() {
+    progressBar = HestiaUI.ProgressBar.create({ 
+        x: 5, 
+        y: 200, 
+        width: 64, 
+        height: 3,
+        barColor: 27,
+        valueDelegate: function() { return ticks/100; } });
+    Routines.add(colorCycleRoutine);
 };
 
 var update = function() {
+    Routines.update();
+    progressBar.update();
 };
 
 let ticks = 0;
 var draw = function() {
 	Hestia.clear(1);
 	drawPalette(0,0,4);
+	ticks = (ticks + 1) % 100;
 
 	let idx = 0;
 	let yPos = 24;
@@ -24,6 +51,7 @@ var draw = function() {
 		Hestia.drawText("(4%2) + ((8*2)/4) - 2 = 2", 12, yPos, 21);		
 		yPos += 24;
 	}
+    progressBar.draw();
 
 	drawCursor(); 
 };
