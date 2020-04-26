@@ -2,28 +2,12 @@ var init = function() {
 };
 
 var update = function() {
-    // textBox.update();
-    //if (Hestia.mouseButtonDown(0)) {
-    //    Hestia.audio.playNote(4, "G", 1, 0.2); // A very good error tone :P
-    //} //else if (Hestia.mouseButtonUp(0)) {
-    //    Hestia.audio.stopNote(4, "G");
-    //}
 };
 
-// Lena Animation Fame Duration ms [ 400, 200, 100, 100, 100, 100, 200, 200, 100, 200, 100, 200, 200, 100, 100 ]  
-let animationIdx = 0;
-let animationTimes = [ 400, 200, 100, 100, 100, 100, 200, 200, 100, 200, 100, 200, 200, 100, 100 ];
 let ticks = 0;
 var draw = function() {
 	Hestia.clear(1);
 	drawPalette(0,0,4);
-
-	Hestia.drawSprite(animationIdx, 256, 12);
-	ticks += 1;
-	if (ticks * (1000 / config.tickRate)  >= animationTimes[animationIdx]) {
-		animationIdx = (animationIdx + 1) % animationTimes.length;
-		ticks = 0;
-	}
 
 	let idx = 0;
 	let yPos = 24;
@@ -67,22 +51,18 @@ var config = {
 	"height": 540,
 	"pixelRatio": 2,
 	"tickRate": 60,
-	"palette": "palettes/aseprite.json",
-	"spriteSheet": { 
-		"path": "images/LenaSpriteSheet.png", 
-		"spriteSize": 48
-	},
+	"palette": "/palettes/aseprite.json",
 	"fonts": [{
 		    "name": "micro",
 		    "default": true,
-		    "path": "assets/fonts/micro-font.png",
+		    "path": "/fonts/micro-font.png",
 		    "width": 4,
 		    "height": 6,
 		    "alphabet":  "ABCDEFGHIJKLMNOPQRSTUVabcdefghijklmnopqrstuvWXYZ0123456789_.,!?:; wxyz()[]{}'\"/\\|=-+*<>%"
 		},{
 			"name": "mini",
 		    "default": true,
-		    "path": "assets/fonts/mini-font.png",
+		    "path": "/fonts/mini-font.png",
 		    "width": 6,
 		    "height": 8,
 		    "alphabet":  "ABCDEFGHIJKLMNOPQRSTUVabcdefghijklmnopqrstuvWXYZ0123456789_.,!?:; wxyz()[]{}'\"/\\|=-+*<>%",

@@ -213,7 +213,7 @@ var config = {
 	"height": 144,
 	"pixelRatio": 4,
 	"tickRate": 60,
-	"palette": "palettes/aseprite.json",
+	"palette": "/palettes/aseprite.json",
 	"spriteSheet": { 
 		"path": "images/spriteSheet.png", 
 		"spriteSize": 8

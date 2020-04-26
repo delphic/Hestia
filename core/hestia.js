@@ -65,7 +65,7 @@ Hestia.init = function(config) {
 		loadFont({
 		    "name": "micro",
 		    "default": true,
-		    "path": "assets/fonts/micro-font.png",
+		    "path": "/fonts/micro-font.png",
 		    "width": 4,
 		    "height": 6,
 		    "spacing": 1,

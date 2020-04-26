@@ -20,5 +20,5 @@ browserify core/hestia.js -o hestia.js
 Features:
 ---------
 Present: Rendering, Input
-
+In Progress: SFX
 Outstanding: SFX, Music, Map
