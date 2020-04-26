@@ -1,7 +1,7 @@
 var progressBar;
 
 var colorCycleRoutine = function(elapsed) {
-    if (elapsed >= 100) {
+    if (elapsed >= 130) {
         let c = (progressBar.barColor + 1) % Hestia.palette().length;
         if (c == 1) {
             c += 1; // Skip clear colour
@@ -21,13 +21,13 @@ var init = function() {
         width: 64, 
         height: 3,
         barColor: 27,
-        valueDelegate: function() { return ticks/100; } });
+        valueDelegate: function() { return Math.max(0, Math.min(100, ticks-10))/100; } });
     Routines.add(colorCycleRoutine);
 };
 
 let ticks = 0;
 var update = function() {
-	ticks = (ticks + 1) % 100;
+	ticks = (ticks + 1) % 130;
     Routines.update();
     progressBar.update();
 };
