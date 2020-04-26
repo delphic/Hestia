@@ -25,16 +25,16 @@ var init = function() {
     Routines.add(colorCycleRoutine);
 };
 
+let ticks = 0;
 var update = function() {
+	ticks = (ticks + 1) % 100;
     Routines.update();
     progressBar.update();
 };
 
-let ticks = 0;
 var draw = function() {
 	Hestia.clear(1);
 	drawPalette(0,0,4);
-	ticks = (ticks + 1) % 100;
 
 	let idx = 0;
 	let yPos = 24;
