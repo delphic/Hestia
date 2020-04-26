@@ -11,7 +11,7 @@ JavaScript Style:
 -----------------
 Broadly https://github.com/delphic/Fury/blob/master/docs/Fury%20Overview.md#javascript-style
 
-However we're a bit more forgiving of single character variables at the moment.
+However we're a bit more forgiving of single character variables at the moment, and get functions don't always have the get prefix.
 
 Build:
 ------
@@ -20,5 +20,7 @@ browserify core/client.js -o hestia.js
 Features:
 ---------
 Present: Rendering, Input
+
 In Progress: SFX
-Outstanding: SFX, Music, Map
+
+Outstanding: Music, Map
