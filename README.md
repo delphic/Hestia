@@ -15,7 +15,7 @@ However we're a bit more forgiving of single character variables at the moment.
 
 Build:
 ------
-browserify core/hestia.js -o hestia.js
+browserify core/client.js -o hestia.js
 
 Features:
 ---------

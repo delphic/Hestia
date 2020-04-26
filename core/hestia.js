@@ -1,5 +1,6 @@
 // PICO-8 Inspired HTML5 Canvas Renderer
-Hestia = {};
+"use strict";
+var Hestia = module.exports = {};
 
 var canvas, ctx, palette, paletteIndex, spriteSheet, hideCursor;
 var tickRate, ticks, lastTime, elapsed, pause, lockCount = 0;
@@ -60,7 +61,7 @@ Hestia.init = function(config) {
 	    loadFont(config.font);
 	}
 
-	if (loadingFonts == 0) {
+	if (loadingFonts === 0) {
 		// Could arguably bundle this data in font.js like we used to
 		loadFont({
 		    "name": "micro",
@@ -120,6 +121,10 @@ Hestia.stop = function() {
 	if (hideCursor) {
 	    canvas.classList.remove("hideCursor");
 	}
+};
+
+Hestia.palette = function() {
+	return palette;
 };
 
 // Input Querying
@@ -219,7 +224,6 @@ var loadPalette = Hestia.loadPalette = function(path, callback) {
 };
 
 // Drawing
-
 var setPixel = Hestia.setPixel = function(x, y, c) {
     setPaletteIndex(c);
     ctx.fillRect(x,y,1,1);
@@ -285,19 +289,19 @@ var outlineSprite = Hestia.outlineSprite = function(idx, x, y, c, transparencyIn
     	        // Question - is this going to be faster than 4 x fillSprite? with offsets?
     	        // There's less ctx.fill calls, but this isn't CPU prediction friendly
     	        // Left
-    	        if (i == 0 || paletteSprites[idx][k-1] == transparencyIndex) {
+    	        if (i === 0 || paletteSprites[idx][k-1] == transparencyIndex) {
                     ctx.fillRect(x+i-1,y+j,1,1);
     	        }
     	        // Right
-    	        if (i == s-1 || paletteSprites[idx][k+1] == transparencyIndex) {
+    	        if (i === s-1 || paletteSprites[idx][k+1] == transparencyIndex) {
     	            ctx.fillRect(x+i+1,y+j,1,1);
     	        }
     	        // Up
-    	        if (j == 0 || paletteSprites[idx][k-s] == transparencyIndex) {
+    	        if (j === 0 || paletteSprites[idx][k-s] == transparencyIndex) {
     	            ctx.fillRect(x+i,y+j-1,1,1);
     	        }
     	        // Down
-    	        if (j == s-1 || paletteSprites[idx][k+s] == transparencyIndex) {
+    	        if (j === s-1 || paletteSprites[idx][k+s] == transparencyIndex) {
     	            ctx.fillRect(x+i,y+j+1,1,1);
     	        }
     	    }
@@ -352,19 +356,19 @@ var outlineSpriteSection = Hestia.outlineSpriteSection = function(idx, x, y, off
     	        // Question - is this going to be faster than 4 x fillSprite? with offsets?
     	        // There's less ctx.fill calls, but this isn't CPU prediction friendly
     	        // Left
-    	        if (i == 0 || paletteSprites[idx][k-1] == transparencyIndex) {
+    	        if (i === 0 || paletteSprites[idx][k-1] == transparencyIndex) {
                     ctx.fillRect(x+i-1,y+j,1,1);
     	        }
     	        // Right
-    	        if (i == s-1 || paletteSprites[idx][k+1] == transparencyIndex) {
+    	        if (i === s-1 || paletteSprites[idx][k+1] == transparencyIndex) {
     	            ctx.fillRect(x+i+1,y+j,1,1);
     	        }
     	        // Up
-    	        if (j == 0 || paletteSprites[idx][k-s] == transparencyIndex) {
+    	        if (j === 0 || paletteSprites[idx][k-s] == transparencyIndex) {
     	            ctx.fillRect(x+i,y+j-1,1,1);
     	        }
     	        // Down
-    	        if (j == s-1 || paletteSprites[idx][k+s] == transparencyIndex) {
+    	        if (j === s-1 || paletteSprites[idx][k+s] == transparencyIndex) {
     	            ctx.fillRect(x+i,y+j+1,1,1);
     	        }
     	    }
@@ -437,6 +441,7 @@ var measureText = Hestia.measureText = function(text) {
     return length;
 };
 
+// Private Methods
 var palettiseSpriteSheet = function(spriteSheet, palette, transparencyIndex) {
     // Draw Image to hidden canvas and get image data
     if (!palettiseCanvas) {
@@ -509,11 +514,11 @@ var createFont = function(spriteSheet, fontConfig) {
         palettiseCanvas.style = "display: none";
     }
 
-    w = fontConfig.width;
-    h = fontConfig.height;
+    let w = fontConfig.width;
+    let h = fontConfig.height;
 
     let spacing = 0;
-    if (fontConfig.spacing != undefined) {
+    if (fontConfig.spacing !== undefined) {
     	spacing = fontConfig.spacing;
     }
 
@@ -537,9 +542,9 @@ var createFont = function(spriteSheet, fontConfig) {
         ctx.drawImage(spriteSheet, sx, sy, w, h, 0, 0, w, h);
 
         let data = ctx.getImageData(0, 0, w, h).data;
-        let charData = []
+        let charData = [];
         for(let j = 0, n = data.length; j < n; j += 4) {
-            let alpha = data[j+3]
+            let alpha = data[j+3];
             if (alpha > 0) {
                 charData.push(1);
             } else {
@@ -565,13 +570,8 @@ var createFont = function(spriteSheet, fontConfig) {
     if (!currentFont || fontConfig.default) {
 		currentFont = font;     	
     }
-}
-
-Hestia.palette = function() {
-	return palette;
 };
 
-// Private Methods
 var tick = function() {
 	if (lockCount === 0) {
 		elapsed = (Date.now() - lastTime) / 1000;
