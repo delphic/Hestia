@@ -263,6 +263,8 @@ var Font = module.exports = (function(){
     
         let spriteCount = config.alphabet.length;
         
+        font.variableWidth = (config.reducedWidth && config.reducedWidth.length > 0);
+        
         for (let i = 0; i < spriteCount; i++) {
             let sx = (i * w) % img.width, 
         		sy = h * Math.floor((i * w) / img.width);
@@ -476,6 +478,10 @@ Hestia.stop = function() {
 	if (hideCursor) {
 	    canvas.classList.remove("hideCursor");
 	}
+};
+
+Hestia.currentFont = function() {
+    return currentFont;
 };
 
 Hestia.palette = function() {
@@ -787,11 +793,12 @@ var drawText = Hestia.drawText = function(text, x, y, c) {
 
 var measureText = Hestia.measureText = function(text) {
     let length = 0;
-    if (currentFont.reducedWidthLowerCase) {
+    if (currentFont.variableWidth) {
         for(var i = 0, l = text.length; i < l; i++) {
             var letter = text[i];
-            if (currentFont[letter] && letter.toUpperCase() != letter && letter != "m" && letter != "w") {
-                length += currentFont.width + currentFont.spacing - currentFont.reducedWidthLowerCase;
+            var letterData = currentFont[letter]; 
+            if (letterData && letterData.width !== undefined) {
+                length += letterData.width + currentFont.spacing;
             } else {
         		length += currentFont.width + currentFont.spacing;
             }
@@ -1100,26 +1107,37 @@ var ProgressBar = module.exports = (function() {
     var proto = {
         x: 0,
         y: 0,
+        labelColor: 0,
         borderColor: 0,
         barColor: 1,
         borderSize: 1,
         height: 1,
         width: 10,
         value: 0,
+        offsetX: 0,
+        labelOffsetY: 0,
         update: function() {
             this.value = this.getValue();
         },
         draw: function() {
-            let xOffset = 0;
+            if (this.dirty) {
+                this.calculateOffsets();
+                this.dirty = false;
+            }
             if (this.label) {
-                Hestia.drawText(this.label, this.x, this.y - 1, this.borderColor); // TODO: Do centre calc rather than just -1
-                xOffset = Hestia.measureText(this.label) + 1; // Could probably make drawText return width
+                Hestia.drawText(this.label, this.x, this.y + this.labelOffsetY, this.labelColor);
             }
-            Hestia.drawRect(xOffset + this.x, this.y, this.width + 2 * this.borderSize, this.height + 2 * this.borderSize, this.borderColor);
+            Hestia.drawRect(this.offsetX + this.x, this.y, this.width + 2 * this.borderSize, this.height + 2 * this.borderSize, this.borderColor);
             if (this.value > 0) {
-                Hestia.fillRect(xOffset + this.x + this.borderSize, this.y + this.borderSize, Math.floor(this.value * this.width), this.height, this.barColor);
+                Hestia.fillRect(this.offsetX + this.x + this.borderSize, this.y + this.borderSize, Math.floor(this.value * this.width), this.height, this.barColor);
             }
-        }
+        },
+        calculateOffsets: function() {
+            if (this.label) {
+                this.offsetX = Hestia.measureText(this.label) + 1;
+                this.labelOffsetY = -Math.floor((Hestia.currentFont().height - (2 * this.borderSize + this.height)) / 2);
+            }
+        } 
     };
     
     var setHestia = exports.setHestia = function(hestiaInstance) {
@@ -1135,7 +1153,11 @@ var ProgressBar = module.exports = (function() {
         progressBar.height = params.height;
         progressBar.getValue = params.valueDelegate;
         progressBar.value = progressBar.getValue();
-        
+        progressBar.label = params.label;
+
+        if (params.labelColor !== undefined) {
+            progressBar.labelColor = params.labelColor;
+        }
         if (params.borderColor !== undefined) {
             progressBar.borderColor = params.borderColor;
         }
@@ -1145,6 +1167,7 @@ var ProgressBar = module.exports = (function() {
         if (params.borderSize !== undefined) {
             progressBar.borderSize = params.borderSize;
         }
+        progressBar.dirty = true;
         
         return progressBar;
     };
@@ -1224,7 +1247,6 @@ var TextBox = module.exports = (function(){
 		},
 		update: function() {
 		    // This assumes navigation, confirm and cancel buttons
-		    // TODO This should be configurable
 			if (this.select) {
 			    if (this.grid) {
 			        let targetIndex = this.index;
@@ -1251,8 +1273,13 @@ var TextBox = module.exports = (function(){
     					this.index = (this.index + 1) % this.lines.length;
     				}
 			    }
-				if (Hestia.buttonUp(this.buttons.confirm) && this.actions[this.index]) {
-				    this.actions[this.index]();
+				if (Hestia.buttonUp(this.buttons.confirm)) {
+				    if (this.action) {
+				        this.action(this.index);    
+				    }
+				    if (this.actions && this.actions.length > this.index && this.actions[this.index]) {
+				        this.actions[this.index]();
+				    }
 				}
 				if (Hestia.buttonUp(this.buttons.cancel) && this.cancelAction) {
 				    this.cancelAction();
@@ -1260,28 +1287,30 @@ var TextBox = module.exports = (function(){
 			}
 		},
 		recalculateDimensions: function() {
+		    this.charWidth = Hestia.currentFont().width;
+		    this.charHeight = Hestia.currentFont().height;
 			this.w = this.width ? this.width : this.calculateMinWidth();
 			this.h = this.height ? this.height : this.calculateMinHeight();
 		},
 		calculateMinWidth: function() {
-		    // TODO: Update for grid (check each column against grid column width)
-		    // can assume uniform column widths (for now...)
-			var maxWidth = 0;
-			var maxWidthText = "";
+			var maxWidth = 0, width = 0;
 			for(var i = 0; i < this.lines.length; i++) {
-				if (this.lines[i].length > maxWidth) {
-					maxWidth = this.lines[i].length;
-					maxWidthText = this.lines[i];
+			    width = Hestia.measureText(this.lines[i]);
+				if (width > maxWidth) {
+					maxWidth = width;
 				}
 			}
-			// TODO: Don't assume the longest string is the widest
-			return Hestia.measureText(maxWidthText) + 2 * this.padding + this.indent;
+			if (!this.grid) {
+    			return maxWidth + 2 * this.padding + this.indent;
+			} else {
+			    return (maxWidth + 2 * this.padding + this.indent) * this.grid[1];
+			}
 		},
 		calculateMinHeight: function() {
 		    if (this.grid) {
 		        return 2 * this.padding + this.grid[0] * (this.charHeight + this.spacing) - (this.spacing + 1);
 		    } else {
-    			return 2 * this.padding + this.lines.length*(this.charHeight+this.spacing) - (this.spacing + 1);
+    			return 2 * this.padding + this.lines.length * (this.charHeight + this.spacing) - (this.spacing + 1);
 		    }
 		}
 	};
@@ -1319,6 +1348,7 @@ var TextBox = module.exports = (function(){
 		textBox.color = params.color;
 		textBox.bgColor = params.bgColor;
 		textBox.select = params.select;
+		textBox.action = params.action;
 		textBox.actions = params.actions;
 		textBox.cancelAction = params.cancelAction;
 		textBox.width = params.width;
@@ -1336,12 +1366,6 @@ var TextBox = module.exports = (function(){
 		}
 		if (params.grid !== undefined) {
 		    textBox.grid = params.grid; 
-		}
-		if (params.charWidth !== undefined) {
-		    textBox.charWidth = params.charWidth;
-		}
-		if (params.charHeight !== undefined) {
-		    textBox.charHeight = params.charHeight;
 		}
 		if (params.buttons !== undefined) {
 		    textBox.buttons = params.buttons;

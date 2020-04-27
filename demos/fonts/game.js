@@ -1,4 +1,5 @@
 var progressBar;
+var gridBox;
 
 var colorCycleRoutine = function(elapsed) {
     if (elapsed >= 130) {
@@ -13,6 +14,9 @@ var colorCycleRoutine = function(elapsed) {
     return false;
 };
 
+var setGridBoxBg = function(c) {
+    gridBox.bgColor = c;
+};
 
 var init = function() {
     progressBar = HestiaUI.ProgressBar.create({ 
@@ -21,7 +25,37 @@ var init = function() {
         width: 64, 
         height: 3,
         barColor: 27,
+        labelColor: 21,
+        label: "Value:",
         valueDelegate: function() { return Math.max(0, Math.min(100, ticks-10))/100; } });
+    gridBox = HestiaUI.TextBox.create({
+        x: 5,
+        y: 220,
+        lines: ["Earth" , "Air", "Fire", "Water", "Heart" ],
+        color: 21,
+        bgColor: 27,
+        select: true,
+        action: function(index) {
+            switch(index) {
+                case 0: // Earth
+                    setGridBoxBg(3);
+                    break;
+                case 1: // Air
+                    setGridBoxBg(20);
+                    break;
+                case 2: // Fire
+                    setGridBoxBg(27);
+                    break;
+                case 3: // Water
+                    setGridBoxBg(17);
+                    break;
+                case 4: // Heart!
+                    setGridBoxBg(29);
+                    break;
+            }
+        },
+        grid: [2, 3]
+    });
     Routines.add(colorCycleRoutine);
 };
 
@@ -30,11 +64,14 @@ var update = function() {
 	ticks = (ticks + 1) % 130;
     Routines.update();
     progressBar.update();
+    gridBox.update();
 };
 
 var draw = function() {
 	Hestia.clear(1);
-	drawPalette(0,0,4);
+	
+	Hestia.setFont("micro");
+	drawPalette(0,0,10);
 
 	let idx = 0;
 	let yPos = 24;
@@ -51,7 +88,24 @@ var draw = function() {
 		Hestia.drawText("(4%2) + ((8*2)/4) - 2 = 2", 12, yPos, 21);		
 		yPos += 24;
 	}
+	
+	Hestia.setFont("micro");
     progressBar.draw();
+    
+   
+    
+    gridBox.x = 5;
+    gridBox.dirty = true;
+    gridBox.draw();
+    
+    Hestia.setFont("mini");
+    gridBox.x = 5 + gridBox.w + 5;
+    gridBox.dirty = true;
+    gridBox.draw();
+
+    Hestia.currentFont().spacing = 2;
+    drawOutlinedText("The quick brown fox, jumps over the lazy dog!?".toUpperCase(), 12, yPos, 26, 9);
+    Hestia.currentFont().spacing = 0;
 
 	drawCursor(); 
 };
@@ -60,7 +114,26 @@ var drawPalette = function(x, y, size) {
 	var l = Hestia.palette().length;
 	for(var i = 0; i < l; i++) {
 		Hestia.fillRect(x+i*size,y,size,size,i);
+		let text = "" + i;
+		drawOutlinedText(text, x+i*size + 1, y + 1, 21, 0);
 	}
+};
+
+var drawOutlinedText = function(text, x, y, c, oc) {
+    // Adjacent 
+	Hestia.drawText(text, x + 0, y - 1, oc);
+	Hestia.drawText(text, x - 1, y + 0, oc);
+	Hestia.drawText(text, x + 1, y + 0, oc);
+	Hestia.drawText(text, x + 0, y + 1, oc);
+
+    // Diagonal
+	Hestia.drawText(text, x - 1, y - 1, oc);
+	Hestia.drawText(text, x - 1, y + 1, oc);
+	Hestia.drawText(text, x + 1, y - 1, oc);
+	Hestia.drawText(text, x + 1, y + 1, oc);
+	
+	// The Text
+	Hestia.drawText(text, x, y, c);
 };
 
 var drawCursor = function() {

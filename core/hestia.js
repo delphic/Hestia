@@ -156,6 +156,10 @@ Hestia.stop = function() {
 	}
 };
 
+Hestia.currentFont = function() {
+    return currentFont;
+};
+
 Hestia.palette = function() {
 	return palette;
 };
@@ -465,11 +469,12 @@ var drawText = Hestia.drawText = function(text, x, y, c) {
 
 var measureText = Hestia.measureText = function(text) {
     let length = 0;
-    if (currentFont.reducedWidthLowerCase) {
+    if (currentFont.variableWidth) {
         for(var i = 0, l = text.length; i < l; i++) {
             var letter = text[i];
-            if (currentFont[letter] && letter.toUpperCase() != letter && letter != "m" && letter != "w") {
-                length += currentFont.width + currentFont.spacing - currentFont.reducedWidthLowerCase;
+            var letterData = currentFont[letter]; 
+            if (letterData && letterData.width !== undefined) {
+                length += letterData.width + currentFont.spacing;
             } else {
         		length += currentFont.width + currentFont.spacing;
             }

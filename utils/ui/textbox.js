@@ -70,7 +70,6 @@ var TextBox = module.exports = (function(){
 		},
 		update: function() {
 		    // This assumes navigation, confirm and cancel buttons
-		    // TODO This should be configurable
 			if (this.select) {
 			    if (this.grid) {
 			        let targetIndex = this.index;
@@ -97,8 +96,13 @@ var TextBox = module.exports = (function(){
     					this.index = (this.index + 1) % this.lines.length;
     				}
 			    }
-				if (Hestia.buttonUp(this.buttons.confirm) && this.actions[this.index]) {
-				    this.actions[this.index]();
+				if (Hestia.buttonUp(this.buttons.confirm)) {
+				    if (this.action) {
+				        this.action(this.index);    
+				    }
+				    if (this.actions && this.actions.length > this.index && this.actions[this.index]) {
+				        this.actions[this.index]();
+				    }
 				}
 				if (Hestia.buttonUp(this.buttons.cancel) && this.cancelAction) {
 				    this.cancelAction();
@@ -106,28 +110,30 @@ var TextBox = module.exports = (function(){
 			}
 		},
 		recalculateDimensions: function() {
+		    this.charWidth = Hestia.currentFont().width;
+		    this.charHeight = Hestia.currentFont().height;
 			this.w = this.width ? this.width : this.calculateMinWidth();
 			this.h = this.height ? this.height : this.calculateMinHeight();
 		},
 		calculateMinWidth: function() {
-		    // TODO: Update for grid (check each column against grid column width)
-		    // can assume uniform column widths (for now...)
-			var maxWidth = 0;
-			var maxWidthText = "";
+			var maxWidth = 0, width = 0;
 			for(var i = 0; i < this.lines.length; i++) {
-				if (this.lines[i].length > maxWidth) {
-					maxWidth = this.lines[i].length;
-					maxWidthText = this.lines[i];
+			    width = Hestia.measureText(this.lines[i]);
+				if (width > maxWidth) {
+					maxWidth = width;
 				}
 			}
-			// TODO: Don't assume the longest string is the widest
-			return Hestia.measureText(maxWidthText) + 2 * this.padding + this.indent;
+			if (!this.grid) {
+    			return maxWidth + 2 * this.padding + this.indent;
+			} else {
+			    return (maxWidth + 2 * this.padding + this.indent) * this.grid[1];
+			}
 		},
 		calculateMinHeight: function() {
 		    if (this.grid) {
 		        return 2 * this.padding + this.grid[0] * (this.charHeight + this.spacing) - (this.spacing + 1);
 		    } else {
-    			return 2 * this.padding + this.lines.length*(this.charHeight+this.spacing) - (this.spacing + 1);
+    			return 2 * this.padding + this.lines.length * (this.charHeight + this.spacing) - (this.spacing + 1);
 		    }
 		}
 	};
@@ -165,6 +171,7 @@ var TextBox = module.exports = (function(){
 		textBox.color = params.color;
 		textBox.bgColor = params.bgColor;
 		textBox.select = params.select;
+		textBox.action = params.action;
 		textBox.actions = params.actions;
 		textBox.cancelAction = params.cancelAction;
 		textBox.width = params.width;
@@ -182,12 +189,6 @@ var TextBox = module.exports = (function(){
 		}
 		if (params.grid !== undefined) {
 		    textBox.grid = params.grid; 
-		}
-		if (params.charWidth !== undefined) {
-		    textBox.charWidth = params.charWidth;
-		}
-		if (params.charHeight !== undefined) {
-		    textBox.charHeight = params.charHeight;
 		}
 		if (params.buttons !== undefined) {
 		    textBox.buttons = params.buttons;

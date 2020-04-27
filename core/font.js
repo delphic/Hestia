@@ -21,6 +21,8 @@ var Font = module.exports = (function(){
     
         let spriteCount = config.alphabet.length;
         
+        font.variableWidth = (config.reducedWidth && config.reducedWidth.length > 0);
+        
         for (let i = 0; i < spriteCount; i++) {
             let sx = (i * w) % img.width, 
         		sy = h * Math.floor((i * w) / img.width);
