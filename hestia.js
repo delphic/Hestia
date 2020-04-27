@@ -239,107 +239,9 @@ var HestiaAudio = module.exports = function() {
 Hestia = require('./hestia.js');
 HestiaUI = require('../utils/ui.js');
 Routines = require('../utils/routines.js');
-},{"../utils/routines.js":5,"../utils/ui.js":6,"./hestia.js":3}],3:[function(require,module,exports){
-// PICO-8 Inspired HTML5 Canvas Renderer
+},{"../utils/routines.js":7,"../utils/ui.js":8,"./hestia.js":4}],3:[function(require,module,exports){
 "use strict";
-var Hestia = module.exports = {};
-
-var canvas, ctx, palette, paletteIndex, hideCursor;
-var tickRate, ticks, lastTime, elapsed, pause, lockCount = 0;
-var fonts = {}, currentFont;
-var palettiseCanvas;
-var spriteSheet, spriteSheets = {}, sprites = [];
-
-var input = require("./input.js");
-var audio = Hestia.audio = require('./audio.js');   // Exposing interface for testing / play
-
-var SpriteSheet = (function(){
-    var exports = {};
-    var proto = {};
-    
-    var canvas;
-    
-    var palettise = function(img, s, palette, transparencyIndex) {
-        // Draw Image to hidden canvas and get image data
-        if (!canvas) {
-            canvas = document.createElement("canvas");
-            document.body.appendChild(canvas);
-            canvas.style = "display: none";
-        }
-    
-        // Get channels out of palette (could cache this)
-        let sprites = [];
-        let paletteColors = [];
-        for(let i = 0, l = palette.length; i < l; i++) {
-            paletteColors[i] = palette[i].replace("rgb(", "").replace(")", "").split(",");
-            for (let j = 0; j < 3; j++) {
-                paletteColors[i][j] = parseInt(paletteColors[i][j], 10);
-            }
-        }
-        if (!transparencyIndex || transparencyIndex < 0 || transparencyIndex >= palette.length) {
-            transparencyIndex = 0;
-        }
-        
-    	canvas.width = s;
-        canvas.height = s;
-        let ctx = canvas.getContext('2d');
-    
-        let spriteCount = Math.floor(img.width / s) * Math.floor(img.height / s);
-        for(let idx = 0; idx < spriteCount; idx++) {
-        	let sx = (idx*s)%img.width, 
-        		sy = s * Math.floor((idx*s)/img.width);
-        	ctx.clearRect(0, 0, s, s);
-            ctx.drawImage(img, sx, sy, s, s, 0, 0, s, s);
-            let data = ctx.getImageData(0, 0, s, s).data;
-            
-            // match colors to pallette index based on difference to RGB values
-            let spriteIndicies = [];
-            let currentColor = [0, 0, 0, 0];
-            for(let j = 0, n = data.length; j < n; j += 4) {
-                currentColor[0] = data[j];
-                currentColor[1] = data[j+1];
-                currentColor[2] = data[j+2];
-                currentColor[3] = data[j+3];
-                
-                if (currentColor[3] === 0) {
-                    spriteIndicies.push(transparencyIndex);
-                } else {
-                    let closestDiff = Number.MAX_SAFE_INTEGER;
-                    let matchedIndex = 0; 
-                    let tolerance = 3*255; // TODO: Pass tolerance, 0 seems to work for expected colors
-                    for(let i = 0, l = paletteColors.length; i < l; i++) {
-                        let diff = 0;
-                        diff += Math.abs(currentColor[0] - paletteColors[i][0]);
-                        diff += Math.abs(currentColor[1] - paletteColors[i][1]);
-                        diff += Math.abs(currentColor[2] - paletteColors[i][2]);
-                        if (diff < tolerance && diff < closestDiff) {
-                            matchedIndex = i;
-                            closestDiff = diff;
-                        }
-                    }
-                    spriteIndicies.push(matchedIndex);
-                }
-            }
-            sprites[idx] = spriteIndicies;
-        }
-        return sprites;
-    };
-    
-    var init = exports.init = function(palettiseCanvas) {
-        canvas = palettiseCanvas;
-    };
-    
-    var create = exports.create = function(params) {
-        var spriteSheet = Object.create(proto);
-        spriteSheet.size = params.size;
-        spriteSheet.sprites = palettise(params.image, params.size, params.palette, params.transparencyIndex);
-        return spriteSheet;
-    };
-    
-    return exports;
-})();
-
-var Font = (function(){
+var Font = module.exports = (function(){
     var exports = {};
     var proto = {};
     
@@ -348,7 +250,7 @@ var Font = (function(){
     var palettise = function(font, img, config) {
         if (!canvas) {
             canvas = document.createElement("canvas");
-            document.body.appendChild(palettiseCanvas);
+            document.body.appendChild(canvas);
             canvas.style = "display: none";
         }
     
@@ -417,6 +319,22 @@ var Font = (function(){
 
     return exports;
 })();
+},{}],4:[function(require,module,exports){
+// PICO-8 Inspired HTML5 Canvas Renderer
+"use strict";
+var Hestia = module.exports = {};
+
+var canvas, ctx, palette, paletteIndex, hideCursor;
+var tickRate, ticks, lastTime, elapsed, pause, lockCount = 0;
+var fonts = {}, currentFont;
+var palettiseCanvas;
+var spriteSheet, spriteSheets = {}, sprites = [];
+
+var input = require("./input.js");
+var audio = Hestia.audio = require('./audio.js');   // Exposing interface for testing / play
+
+var SpriteSheet = require('./spritesheet.js');
+var Font = require('./font.js');
 
 // Public methods
 
@@ -925,7 +843,7 @@ var setPaletteIndex = function(c) {
 		ctx.fillStyle = palette[c];
 	}
 };
-},{"./audio.js":1,"./input.js":4}],4:[function(require,module,exports){
+},{"./audio.js":1,"./font.js":3,"./input.js":5,"./spritesheet.js":6}],5:[function(require,module,exports){
 var Input = module.exports = function() {
 	var exports = {};
 
@@ -1042,7 +960,94 @@ var Input = module.exports = function() {
 
 	return exports;
 }();
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
+"use strict";
+var SpriteSheet = module.exports = (function(){
+    var exports = {};
+    var proto = {};
+    
+    var canvas;
+    
+    var palettise = function(img, s, palette, transparencyIndex) {
+        // Draw Image to hidden canvas and get image data
+        if (!canvas) {
+            canvas = document.createElement("canvas");
+            document.body.appendChild(canvas);
+            canvas.style = "display: none";
+        }
+    
+        // Get channels out of palette (could cache this)
+        let sprites = [];
+        let paletteColors = [];
+        for(let i = 0, l = palette.length; i < l; i++) {
+            paletteColors[i] = palette[i].replace("rgb(", "").replace(")", "").split(",");
+            for (let j = 0; j < 3; j++) {
+                paletteColors[i][j] = parseInt(paletteColors[i][j], 10);
+            }
+        }
+        if (!transparencyIndex || transparencyIndex < 0 || transparencyIndex >= palette.length) {
+            transparencyIndex = 0;
+        }
+        
+    	canvas.width = s;
+        canvas.height = s;
+        let ctx = canvas.getContext('2d');
+    
+        let spriteCount = Math.floor(img.width / s) * Math.floor(img.height / s);
+        for(let idx = 0; idx < spriteCount; idx++) {
+        	let sx = (idx*s)%img.width, 
+        		sy = s * Math.floor((idx*s)/img.width);
+        	ctx.clearRect(0, 0, s, s);
+            ctx.drawImage(img, sx, sy, s, s, 0, 0, s, s);
+            let data = ctx.getImageData(0, 0, s, s).data;
+            
+            // match colors to pallette index based on difference to RGB values
+            let spriteIndicies = [];
+            let currentColor = [0, 0, 0, 0];
+            for(let j = 0, n = data.length; j < n; j += 4) {
+                currentColor[0] = data[j];
+                currentColor[1] = data[j+1];
+                currentColor[2] = data[j+2];
+                currentColor[3] = data[j+3];
+                
+                if (currentColor[3] === 0) {
+                    spriteIndicies.push(transparencyIndex);
+                } else {
+                    let closestDiff = Number.MAX_SAFE_INTEGER;
+                    let matchedIndex = 0; 
+                    let tolerance = 3*255; // TODO: Pass tolerance, 0 seems to work for expected colors
+                    for(let i = 0, l = paletteColors.length; i < l; i++) {
+                        let diff = 0;
+                        diff += Math.abs(currentColor[0] - paletteColors[i][0]);
+                        diff += Math.abs(currentColor[1] - paletteColors[i][1]);
+                        diff += Math.abs(currentColor[2] - paletteColors[i][2]);
+                        if (diff < tolerance && diff < closestDiff) {
+                            matchedIndex = i;
+                            closestDiff = diff;
+                        }
+                    }
+                    spriteIndicies.push(matchedIndex);
+                }
+            }
+            sprites[idx] = spriteIndicies;
+        }
+        return sprites;
+    };
+    
+    var init = exports.init = function(palettiseCanvas) {
+        canvas = palettiseCanvas;
+    };
+    
+    var create = exports.create = function(params) {
+        var spriteSheet = Object.create(proto);
+        spriteSheet.size = params.size;
+        spriteSheet.sprites = palettise(params.image, params.size, params.palette, params.transparencyIndex);
+        return spriteSheet;
+    };
+    
+    return exports;
+})();
+},{}],7:[function(require,module,exports){
 // Simple predicate based routines, that run for a number of updates.
 // Consider use of https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Iterators_and_Generators
 var Routines = module.exports = (function(){
@@ -1079,7 +1084,7 @@ var Routines = module.exports = (function(){
     
     return exports;
 })();
-},{}],6:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 "use strict";
 var HestiaUI = module.exports = (function(){
     var exports = {};
@@ -1087,7 +1092,7 @@ var HestiaUI = module.exports = (function(){
     exports.ProgressBar = require('./ui/progressbar.js');
     return exports;
 })();
-},{"./ui/progressbar.js":7,"./ui/textbox.js":8}],7:[function(require,module,exports){
+},{"./ui/progressbar.js":9,"./ui/textbox.js":10}],9:[function(require,module,exports){
 "use strict";
 var ProgressBar = module.exports = (function() {
     var exports = {};
@@ -1146,7 +1151,7 @@ var ProgressBar = module.exports = (function() {
     
     return exports;
 })();
-},{}],8:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 "use strict";
 var TextBox = module.exports = (function(){
     var exports = {};
