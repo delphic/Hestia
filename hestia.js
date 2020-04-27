@@ -244,13 +244,179 @@ Routines = require('../utils/routines.js');
 "use strict";
 var Hestia = module.exports = {};
 
-var canvas, ctx, palette, paletteIndex, spriteSheet, hideCursor;
+var canvas, ctx, palette, paletteIndex, hideCursor;
 var tickRate, ticks, lastTime, elapsed, pause, lockCount = 0;
 var fonts = {}, currentFont;
-var palettiseCanvas, paletteSprites = []; // sprites by index in palette indices
+var palettiseCanvas;
+var spriteSheet, spriteSheets = {}, sprites = [];
 
 var input = require("./input.js");
 var audio = Hestia.audio = require('./audio.js');   // Exposing interface for testing / play
+
+var SpriteSheet = (function(){
+    var exports = {};
+    var proto = {};
+    
+    var canvas;
+    
+    var palettise = function(img, s, palette, transparencyIndex) {
+        // Draw Image to hidden canvas and get image data
+        if (!canvas) {
+            canvas = document.createElement("canvas");
+            document.body.appendChild(canvas);
+            canvas.style = "display: none";
+        }
+    
+        // Get channels out of palette (could cache this)
+        let sprites = [];
+        let paletteColors = [];
+        for(let i = 0, l = palette.length; i < l; i++) {
+            paletteColors[i] = palette[i].replace("rgb(", "").replace(")", "").split(",");
+            for (let j = 0; j < 3; j++) {
+                paletteColors[i][j] = parseInt(paletteColors[i][j], 10);
+            }
+        }
+        if (!transparencyIndex || transparencyIndex < 0 || transparencyIndex >= palette.length) {
+            transparencyIndex = 0;
+        }
+        
+    	canvas.width = s;
+        canvas.height = s;
+        let ctx = canvas.getContext('2d');
+    
+        let spriteCount = Math.floor(img.width / s) * Math.floor(img.height / s);
+        for(let idx = 0; idx < spriteCount; idx++) {
+        	let sx = (idx*s)%img.width, 
+        		sy = s * Math.floor((idx*s)/img.width);
+        	ctx.clearRect(0, 0, s, s);
+            ctx.drawImage(img, sx, sy, s, s, 0, 0, s, s);
+            let data = ctx.getImageData(0, 0, s, s).data;
+            
+            // match colors to pallette index based on difference to RGB values
+            let spriteIndicies = [];
+            let currentColor = [0, 0, 0, 0];
+            for(let j = 0, n = data.length; j < n; j += 4) {
+                currentColor[0] = data[j];
+                currentColor[1] = data[j+1];
+                currentColor[2] = data[j+2];
+                currentColor[3] = data[j+3];
+                
+                if (currentColor[3] === 0) {
+                    spriteIndicies.push(transparencyIndex);
+                } else {
+                    let closestDiff = Number.MAX_SAFE_INTEGER;
+                    let matchedIndex = 0; 
+                    let tolerance = 3*255; // TODO: Pass tolerance, 0 seems to work for expected colors
+                    for(let i = 0, l = paletteColors.length; i < l; i++) {
+                        let diff = 0;
+                        diff += Math.abs(currentColor[0] - paletteColors[i][0]);
+                        diff += Math.abs(currentColor[1] - paletteColors[i][1]);
+                        diff += Math.abs(currentColor[2] - paletteColors[i][2]);
+                        if (diff < tolerance && diff < closestDiff) {
+                            matchedIndex = i;
+                            closestDiff = diff;
+                        }
+                    }
+                    spriteIndicies.push(matchedIndex);
+                }
+            }
+            sprites[idx] = spriteIndicies;
+        }
+        return sprites;
+    };
+    
+    var init = exports.init = function(palettiseCanvas) {
+        canvas = palettiseCanvas;
+    };
+    
+    var create = exports.create = function(params) {
+        var spriteSheet = Object.create(proto);
+        spriteSheet.size = params.size;
+        spriteSheet.sprites = palettise(params.image, params.size, params.palette, params.transparencyIndex);
+        return spriteSheet;
+    };
+    
+    return exports;
+})();
+
+var Font = (function(){
+    var exports = {};
+    var proto = {};
+    
+    var canvas;
+    
+    var palettise = function(font, img, config) {
+        if (!canvas) {
+            canvas = document.createElement("canvas");
+            document.body.appendChild(palettiseCanvas);
+            canvas.style = "display: none";
+        }
+    
+        let w = config.width;
+        let h = config.height;
+
+    	canvas.width = w;
+        canvas.height = h;
+        let ctx = canvas.getContext('2d');
+    
+        let spriteCount = config.alphabet.length;
+        
+        for (let i = 0; i < spriteCount; i++) {
+            let sx = (i * w) % img.width, 
+        		sy = h * Math.floor((i * w) / img.width);
+        	ctx.clearRect(0, 0, w, h);
+            ctx.drawImage(img, sx, sy, w, h, 0, 0, w, h);
+    
+            let data = ctx.getImageData(0, 0, w, h).data;
+            let charData = [];
+            for(let j = 0, n = data.length; j < n; j += 4) {
+                let alpha = data[j+3];
+                if (alpha > 0) {
+                    charData.push(1);
+                } else {
+                    charData.push(0);
+                }
+            }
+    
+            let letter = config.alphabet[i];
+            let charObj = {};
+            // Look for reduced width characters
+            if (config.reducedWidth && config.reducedWidth.length > 0) {
+            	for (let k = 0, m = config.reducedWidth.length; k < m; k++) {
+            		if (config.reducedWidth[k].chars.includes(letter)) {
+            			charObj.width = font.width - config.reducedWidth[k].offset;
+            			break;
+            		}
+            	}
+            }
+            charObj.data = charData;
+            font[letter] = charObj;
+        }
+        
+        return font;
+    };
+    
+    var init = exports.init = function(palettiseCanvas) {
+        canvas = palettiseCanvas;
+    };
+    
+    var create = exports.create = function(params) {
+        let font = Object.create(proto);
+        
+        font.width = params.config.width;
+        font.height = params.config.height;
+        
+        if (params.config.spacing !== undefined) {
+        	font.spacing = params.config.spacing;
+        } else {
+            font.spacing = 0;
+        }
+
+        return palettise(font, params.image, params.config);
+    };
+
+    return exports;
+})();
 
 // Public methods
 
@@ -262,7 +428,10 @@ var audio = Hestia.audio = require('./audio.js');   // Exposing interface for te
 // 'height' canvas height in pixels 
 // 'pixelRatio' pixel display ratio
 // 'palette' path to palette JSON
+// 'font' object with path to fontSheet and config details
+// 'fonts' array of font objects
 // 'spriteSheet' object with path to spriteSheet img and spriteSize
+// 'spriteSheets' arry of spriteSheet objects
 // 'tickRate' number of ticks per second (optional)
 // 'update' an update function to run each tick (optional)
 // 'draw' a draw function to run each tick, runs after update (optional)
@@ -276,45 +445,71 @@ Hestia.init = function(config) {
 	canvas.height = config.height;
 	canvas.setAttribute("style", "width:" + config.width * config.pixelRatio / window.devicePixelRatio + "px; height:" + config.height * config.pixelRatio / window.devicePixelRatio + "px;");
 
+    if (!palettiseCanvas) {
+        palettiseCanvas = document.createElement("canvas");
+        document.body.appendChild(palettiseCanvas);
+        palettiseCanvas.style = "display: none";
+    }
+    SpriteSheet.init(palettiseCanvas);
+    Font.init(palettiseCanvas);
+
+    // Sprites are dependent on palette loads, so chain those
+	var continueLoading = function() {
+	    // Set Sprite Sheet 
+	    if (config.spriteSheets) {
+	        for (let i = 0, l = config.spriteSheets.length; i < l; i++) {
+	            if (config.spriteSheets[i].path) {
+	                let id = config.spriteSheets[i].id;
+	                if (id === undefined) {
+	                    id = config.spriteSheets[i].path;
+	                }
+	                loadSpriteSheet(id, config.spriteSheets[i].path, config.spriteSheets[i].spriteSize, config.spriteSheets[i].default);
+	            }
+	        }
+	    }
+    	if (config.spriteSheet && config.spriteSheet.path) {
+    	    let id = config.spriteSheet.id;
+    	    if (id === undefined) {
+    	        id = config.spriteSheet.path;
+    	    }
+    		loadSpriteSheet(id, config.spriteSheet.path, config.spriteSheet.spriteSize, config.spriteSheet.default);
+    	}
+    };
+
 	// Set Pallette
 	if (config.palette) {
-		loadPalette(config.palette);
+		loadPalette(config.palette, continueLoading);
 	} else {
-		loadPalette("palettes/aseprite.json");
-	}
-	
-	// Set Sprite Sheet 
-	if (config.spriteSheet && config.spriteSheet.path) {
-		loadSpriteSheet(config.spriteSheet.path, config.spriteSheet.spriteSize);
+		loadPalette("palettes/aseprite.json", continueLoading);
 	}
 	
 	// Set Font
-	let loadingFonts = 0;
-	if (config.fonts) {
-		for (let i = 0, l = config.fonts.length; i < l; i++) {
-			if (config.fonts[i].path) {
-				loadingFonts += 1;
-				loadFont(config.fonts[i]);
-			}
-		}
-	}
-	else if (config.font && config.font.path) {
-		loadingFonts = 1;
-	    loadFont(config.font);
-	}
-
-	if (loadingFonts === 0) {
-		// Could arguably bundle this data in font.js like we used to
-		loadFont({
-		    "name": "micro",
-		    "default": true,
-		    "path": "/fonts/micro-font.png",
-		    "width": 4,
-		    "height": 6,
-		    "spacing": 1,
-		    "alphabet":  "ABCDEFGHIJKLMNOPQRSTUVabcdefghijklmnopqrstuvWXYZ0123456789_.,!?:; wxyz()[]{}'\"/\\|=-+*<>"
-		});
-	}
+    let loadingFonts = 0;
+    if (config.fonts) {
+    	for (let i = 0, l = config.fonts.length; i < l; i++) {
+    		if (config.fonts[i].path) {
+    			loadingFonts += 1;
+    			loadFont(config.fonts[i]);
+    		}
+    	}
+    }
+    if (config.font && config.font.path) {
+    	loadingFonts += 1;
+        loadFont(config.font);
+    }
+    
+    if (loadingFonts === 0) {
+    	// Could arguably bundle this data in font.js like we used to
+    	loadFont({
+    	    "name": "micro",
+    	    "default": true,
+    	    "path": "/fonts/micro-font.png",
+    	    "width": 4,
+    	    "height": 6,
+    	    "spacing": 1,
+    	    "alphabet":  "ABCDEFGHIJKLMNOPQRSTUVabcdefghijklmnopqrstuvWXYZ0123456789_.,!?:; wxyz()[]{}'\"/\\|=-+*<>"
+    	});
+    }
 
 	// Set Tick Functions
 	if (config.update) {
@@ -369,6 +564,10 @@ Hestia.palette = function() {
 	return palette;
 };
 
+Hestia.notifyPaletteChange = function() {
+    ctx.fillStyle = palette[paletteIndex];  // Ensure correct fillStyle
+};
+
 Hestia.tickCount = function() {
     return ticks;
 };
@@ -408,45 +607,50 @@ Hestia.mouseButtonUp = function(btn) {
 
 // Loading
 // https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
-var loadSpriteSheet = Hestia.loadSpriteSheet = function(path, spriteSize) {
-	// (note img currently, no pallete enforcement - instead matched on color)
-	// TODO: convert to use indexed image format
+var loadSpriteSheet = Hestia.loadSpriteSheet = function(id, path, spriteSize, setCurrent) {
+    // TODO: should ideally take a palette name arguement and default to current
+    // will require storing palettes by name and knowing if there's a request for
+    // a given palette in progress during init
+	// TODO: convert to support use of indexed image format
 	lockCount += 1;
-	spriteSheet = new Image();
-	spriteSheet.spriteSize = spriteSize;
+	let image = new Image();
 	fetch(path).then(function(response) { 
 		return response.blob(); 
 	}).then(function(blob) {
-		spriteSheet.src = URL.createObjectURL(blob);
-		let pollId = window.setInterval(function() {
-		    // Hack poll to wait for src to finish and ensure palette has loaded
-		    if (palette && spriteSheet.width > 0) {
-		        palettiseSpriteSheet(spriteSheet, palette);
-        		lockCount -= 1;
-        		window.clearInterval(pollId);
-		    }
-		}, 60);
+		image.src = URL.createObjectURL(blob);
+		image.decode().then(function() {
+	        spriteSheets[id] = SpriteSheet.create({ "size": spriteSize, "image": image, "palette": palette });
+            if (!spriteSheet || setCurrent) {
+                setSpriteSheet(id);
+            }
+    		lockCount -= 1;
+		}).catch(function(error) {
+    		console.error("Load Sprite Sheet Failed: " + error.message);
+    		lockCount -= 1;
+    	});
 	}).catch(function(error) {
 		console.error("Load Sprite Sheet Failed: " + error.message);
 		lockCount -= 1;
 	});
 };
 
-var loadFont = Hestia.loadFont = function(font) {
+var loadFont = Hestia.loadFont = function(config) {
     lockCount += 1;
-    let fontSheet = new Image();
-    fetch(font.path).then(function(response) {
+    let img = new Image();
+    fetch(config.path).then(function(response) {
         return response.blob();
     }).then(function(blob) {
-        fontSheet.src = URL.createObjectURL(blob);
-        let pollId = window.setInterval(function(){
-            // Hack to wait for src to finish
-            if (fontSheet.width > 0) {
-                createFont(fontSheet, font);
-                lockCount -= 1;
-                window.clearInterval(pollId);
+        img.src = URL.createObjectURL(blob);
+        img.decode().then(function(){
+            fonts[config.name] = Font.create({ "image": img, "config": config });
+            if (!currentFont || config.default) {
+            	currentFont = config;     	
             }
-        }, 60);
+            lockCount -= 1;
+        }).catch(function(error) {
+            console.error("Load Font Failed: " + error.message);
+            lockCount -= 1;
+        });
     }).catch(function(error) {
         console.error("Load Font Failed: " + error.message);
         lockCount -= 1;
@@ -492,13 +696,13 @@ var drawSprite = Hestia.drawSprite = function(idx, x, y, transparencyIndex) {
     if (!transparencyIndex) {
         transparencyIndex = 0;
     }
-	let s = spriteSheet.spriteSize;
+	let s = spriteSheet.size;
 	// Super naive palette based sprite rendering
 	let k = 0, c = 0;
 	// Might be faster to iterate over k and calculate j and i
     for(let j = 0; j < s; j++) {
     	for(let i = 0; i < s; i++) {
-    	    c = paletteSprites[idx][k++];
+    	    c = sprites[idx][k++];
     	    if (c != transparencyIndex) {
     	        setPixel(x+i, y+j, c);
     	    }
@@ -511,11 +715,11 @@ var fillSprite = Hestia.fillSprite = function(idx, x, y, c, transparencyIndex) {
         transparencyIndex = 0;
     }
     setPaletteIndex(c);
-	let s = spriteSheet.spriteSize;
+	let s = spriteSheet.size;
 	let k = 0;
     for(let j = 0; j < s; j++) {
     	for(let i = 0; i < s; i++) {
-    	    if (paletteSprites[idx][k++] != transparencyIndex) {
+    	    if (sprites[idx][k++] != transparencyIndex) {
                 ctx.fillRect(x+i,y+j,1,1);
     	    }
 	    }
@@ -527,27 +731,27 @@ var outlineSprite = Hestia.outlineSprite = function(idx, x, y, c, transparencyIn
         transparencyIndex = 0;
     }
     setPaletteIndex(c);
-	let s = spriteSheet.spriteSize;
+	let s = spriteSheet.size;
 	let k = 0;
     for(let j = 0; j < s; j++) {
     	for(let i = 0; i < s; i++) {
-    	    if (paletteSprites[idx][k] != transparencyIndex) {
+    	    if (sprites[idx][k] != transparencyIndex) {
     	        // Question - is this going to be faster than 4 x fillSprite? with offsets?
     	        // There's less ctx.fill calls, but this isn't CPU prediction friendly
     	        // Left
-    	        if (i === 0 || paletteSprites[idx][k-1] == transparencyIndex) {
+    	        if (i === 0 || sprites[idx][k-1] == transparencyIndex) {
                     ctx.fillRect(x+i-1,y+j,1,1);
     	        }
     	        // Right
-    	        if (i === s-1 || paletteSprites[idx][k+1] == transparencyIndex) {
+    	        if (i === s-1 || sprites[idx][k+1] == transparencyIndex) {
     	            ctx.fillRect(x+i+1,y+j,1,1);
     	        }
     	        // Up
-    	        if (j === 0 || paletteSprites[idx][k-s] == transparencyIndex) {
+    	        if (j === 0 || sprites[idx][k-s] == transparencyIndex) {
     	            ctx.fillRect(x+i,y+j-1,1,1);
     	        }
     	        // Down
-    	        if (j === s-1 || paletteSprites[idx][k+s] == transparencyIndex) {
+    	        if (j === s-1 || sprites[idx][k+s] == transparencyIndex) {
     	            ctx.fillRect(x+i,y+j+1,1,1);
     	        }
     	    }
@@ -561,11 +765,11 @@ var drawSpriteSection = Hestia.drawSpriteSection = function(idx, x, y, offsetX, 
     if (!transparencyIndex) {
         transparencyIndex = 0;
     }
-	let s = spriteSheet.spriteSize;
+	let s = spriteSheet.size;
     let k = 0, c = 0;
     for(let j = 0; j < s; j++) {
     	for(let i = 0; i < s; i++) {
-    	    c = paletteSprites[idx][k++];
+    	    c = sprites[idx][k++];
     	    if (c != transparencyIndex && i >= offsetX && i < offsetX + w && j >= offsetY && j < offsetY + h) {
     	        setPixel(x+i-offsetX, y+j-offsetY, c);
     	    }
@@ -578,11 +782,11 @@ var fillSpriteSection = Hestia.fillSpriteSection = function(idx, x, y, offsetX, 
         transparencyIndex = 0;
     }
     setPaletteIndex(c);
-	let s = spriteSheet.spriteSize;
+	let s = spriteSheet.size;
     let k = 0;
     for(let j = 0; j < s; j++) {
     	for(let i = 0; i < s; i++) {
-    	    if (paletteSprites[idx][k++] != transparencyIndex && i >= offsetX && i < offsetX + w && j >= offsetY && j < offsetY + h) {
+    	    if (sprites[idx][k++] != transparencyIndex && i >= offsetX && i < offsetX + w && j >= offsetY && j < offsetY + h) {
                 ctx.fillRect(x+i-offsetX,y+j-offsetY,1,1);
     	    }
 	    }
@@ -594,27 +798,27 @@ var outlineSpriteSection = Hestia.outlineSpriteSection = function(idx, x, y, off
         transparencyIndex = 0;
     }
     setPaletteIndex(c);
-	let s = spriteSheet.spriteSize;
+	let s = spriteSheet.size;
     let k = 0;
     for(let j = 0; j < s; j++) {
     	for(let i = 0; i < s; i++) {
-    	    if (paletteSprites[idx][k] != transparencyIndex) {
+    	    if (sprites[idx][k] != transparencyIndex) {
     	        // Question - is this going to be faster than 4 x fillSprite? with offsets?
     	        // There's less ctx.fill calls, but this isn't CPU prediction friendly
     	        // Left
-    	        if (i === 0 || paletteSprites[idx][k-1] == transparencyIndex) {
+    	        if (i === 0 || sprites[idx][k-1] == transparencyIndex) {
                     ctx.fillRect(x+i-1,y+j,1,1);
     	        }
     	        // Right
-    	        if (i === s-1 || paletteSprites[idx][k+1] == transparencyIndex) {
+    	        if (i === s-1 || sprites[idx][k+1] == transparencyIndex) {
     	            ctx.fillRect(x+i+1,y+j,1,1);
     	        }
     	        // Up
-    	        if (j === 0 || paletteSprites[idx][k-s] == transparencyIndex) {
+    	        if (j === 0 || sprites[idx][k-s] == transparencyIndex) {
     	            ctx.fillRect(x+i,y+j-1,1,1);
     	        }
     	        // Down
-    	        if (j === s-1 || paletteSprites[idx][k+s] == transparencyIndex) {
+    	        if (j === s-1 || sprites[idx][k+s] == transparencyIndex) {
     	            ctx.fillRect(x+i,y+j+1,1,1);
     	        }
     	    }
@@ -663,13 +867,6 @@ var drawText = Hestia.drawText = function(text, x, y, c) {
 	// It may be worth investigating if drawing the text to a canvas in the palette color and then using drawImage to draw the font might be faster.
 };
 
-var setFont = Hestia.setFont = function(fontName) {
-	// Would be nice to decouple this from loading so you can set default font in init rather than using "default" property on font config
-	if (fonts.hasOwnProperty(fontName)) {
-		currentFont = fonts[fontName];
-	}
-};
-
 var measureText = Hestia.measureText = function(text) {
     let length = 0;
     if (currentFont.reducedWidthLowerCase) {
@@ -687,137 +884,22 @@ var measureText = Hestia.measureText = function(text) {
     return length;
 };
 
+var setSpriteSheet = Hestia.setSpriteSheet = function(id) {
+    if (spriteSheets.hasOwnProperty(id)) {
+        spriteSheet = spriteSheets[id];
+        sprites = spriteSheet.sprites;
+    }
+};
+
+var setFont = Hestia.setFont = function(fontName) {
+	// Would be nice to decouple this from loading so you can set default font in init rather than using "default" property on font config
+	if (fonts.hasOwnProperty(fontName)) {
+		currentFont = fonts[fontName];
+	}
+};
+
+
 // Private Methods
-var palettiseSpriteSheet = function(spriteSheet, palette, transparencyIndex) {
-    // Draw Image to hidden canvas and get image data
-    if (!palettiseCanvas) {
-        palettiseCanvas = document.createElement("canvas");
-        document.body.appendChild(palettiseCanvas);
-        palettiseCanvas.style = "display: none";
-    }
-
-    // Get channels out of palette (could cache this)
-    let paletteColors = [];
-    for(let i = 0, l = palette.length; i < l; i++) {
-        paletteColors[i] = palette[i].replace("rgb(", "").replace(")", "").split(",");
-        for (let j = 0; j < 3; j++) {
-            paletteColors[i][j] = parseInt(paletteColors[i][j], 10);
-        }
-    }
-    if (!transparencyIndex || transparencyIndex < 0 || transparencyIndex >= palette.length) {
-        transparencyIndex = 0;
-    }
-    
-    let s = spriteSheet.spriteSize;
-	palettiseCanvas.width = s;
-    palettiseCanvas.height = s;
-    let ctx = palettiseCanvas.getContext('2d');
-
-    let spriteCount = Math.floor(spriteSheet.width / s) * Math.floor(spriteSheet.height / s);
-    for(let idx = 0; idx < spriteCount; idx++) {
-    	let sx = (idx*s)%spriteSheet.width, 
-    		sy = s * Math.floor((idx*s)/spriteSheet.width);
-    	ctx.clearRect(0, 0, s, s);
-        ctx.drawImage(spriteSheet, sx, sy, s, s, 0, 0, s, s);
-        let data = ctx.getImageData(0, 0, s, s).data;
-        
-        // match colors to pallette index based on difference to RGB values
-        let spriteIndicies = [];
-        let currentColor = [0, 0, 0, 0];
-        for(let j = 0, n = data.length; j < n; j += 4) {
-            currentColor[0] = data[j];
-            currentColor[1] = data[j+1];
-            currentColor[2] = data[j+2];
-            currentColor[3] = data[j+3];
-            
-            if (currentColor[3] === 0) {
-                spriteIndicies.push(transparencyIndex);
-            } else {
-                let closestDiff = Number.MAX_SAFE_INTEGER;
-                let matchedIndex = 0; 
-                let tolerance = 3*255; // TODO: Pass tolerance, 0 seems to work for expected colors
-                for(let i = 0, l = paletteColors.length; i < l; i++) {
-                    let diff = 0;
-                    diff += Math.abs(currentColor[0] - paletteColors[i][0]);
-                    diff += Math.abs(currentColor[1] - paletteColors[i][1]);
-                    diff += Math.abs(currentColor[2] - paletteColors[i][2]);
-                    if (diff < tolerance && diff < closestDiff) {
-                        matchedIndex = i;
-                        closestDiff = diff;
-                    }
-                }
-                spriteIndicies.push(matchedIndex);
-            }
-        }
-        paletteSprites[idx] = spriteIndicies;
-    }
-};
-
-var createFont = function(spriteSheet, fontConfig) {
-    if (!palettiseCanvas) {
-        palettiseCanvas = document.createElement("canvas");
-        document.body.appendChild(palettiseCanvas);
-        palettiseCanvas.style = "display: none";
-    }
-
-    let w = fontConfig.width;
-    let h = fontConfig.height;
-
-    let spacing = 0;
-    if (fontConfig.spacing !== undefined) {
-    	spacing = fontConfig.spacing;
-    }
-
-    let font = {
-        width: w,
-        height: h,
-        spacing: spacing,
-    };
-
-
-	palettiseCanvas.width = w;
-    palettiseCanvas.height = h;
-    let ctx = palettiseCanvas.getContext('2d');
-
-    let spriteCount = fontConfig.alphabet.length;
-    
-    for (let i = 0; i < spriteCount; i++) {
-        let sx = (i * w) % spriteSheet.width, 
-    		sy = h * Math.floor((i * w) / spriteSheet.width);
-    	ctx.clearRect(0, 0, w, h);
-        ctx.drawImage(spriteSheet, sx, sy, w, h, 0, 0, w, h);
-
-        let data = ctx.getImageData(0, 0, w, h).data;
-        let charData = [];
-        for(let j = 0, n = data.length; j < n; j += 4) {
-            let alpha = data[j+3];
-            if (alpha > 0) {
-                charData.push(1);
-            } else {
-                charData.push(0);
-            }
-        }
-
-        let letter = fontConfig.alphabet[i];
-        let charObj = {};
-        // Look for reduced width characters
-        if (fontConfig.reducedWidth && fontConfig.reducedWidth.length > 0) {
-        	for (let k = 0, m = fontConfig.reducedWidth.length; k < m; k++) {
-        		if (fontConfig.reducedWidth[k].chars.includes(letter)) {
-        			charObj.width = font.width - fontConfig.reducedWidth[k].offset;
-        			break;
-        		}
-        	}
-        }
-        charObj.data = charData;
-        font[letter] = charObj;
-    }
-    fonts[fontConfig.name] = font;
-    if (!currentFont || fontConfig.default) {
-		currentFont = font;     	
-    }
-};
-
 var tick = function() {
 	if (lockCount === 0) {
 		elapsed = (Date.now() - lastTime) / 1000;
@@ -1083,6 +1165,7 @@ var TextBox = module.exports = (function(){
 		bgColor: 21,
 		indent: 0,
 		align: 0,
+		buttons: { left: 0, right: 1, up: 2, down: 3, confirm: 4, cancel: 5 },
 		grid: undefined,
 		draw: function() {
 		    if (this.dirty) {
@@ -1135,36 +1218,38 @@ var TextBox = module.exports = (function(){
 			Hestia.setPixel(px, py-2, c);
 		},
 		update: function() {
+		    // This assumes navigation, confirm and cancel buttons
+		    // TODO This should be configurable
 			if (this.select) {
 			    if (this.grid) {
 			        let targetIndex = this.index;
-                    if (Hestia.buttonUp(0)) {
+                    if (Hestia.buttonUp(this.buttons.left)) {
                         targetIndex = this.index - this.grid[0];
                     }
-                    if (Hestia.buttonUp(1)) {
+                    if (Hestia.buttonUp(this.buttons.right)) {
                         targetIndex = this.index + this.grid[0];   
                     }
-                    if (Hestia.buttonUp(2) && this.index % this.grid[0] != 0) {
+                    if (Hestia.buttonUp(this.buttons.up) && this.index % this.grid[0] !== 0) {
                         targetIndex = this.index - 1; 
                     }
-                    if (Hestia.buttonUp(3) && this.index % this.grid[0] != this.grid[1] - 1) {
+                    if (Hestia.buttonUp(this.buttons.down) && this.index % this.grid[0] !== this.grid[1] - 1) {
                         targetIndex = this.index + 1;
                     }
                     if (targetIndex >= 0 && targetIndex < this.lines.length) {
                         this.index = targetIndex;
                     }
 			    } else {
-    				if (Hestia.buttonUp(2)) {
+    				if (Hestia.buttonUp(this.buttons.up)) {
     					this.index = (this.index - 1 + this.lines.length) % this.lines.length;
     				}
-    				if (Hestia.buttonUp(3)) {
+    				if (Hestia.buttonUp(this.buttons.down)) {
     					this.index = (this.index + 1) % this.lines.length;
-    				}			        
+    				}
 			    }
-				if (Hestia.buttonUp(4) && this.actions[this.index]) {
+				if (Hestia.buttonUp(this.buttons.confirm) && this.actions[this.index]) {
 				    this.actions[this.index]();
 				}
-				if (Hestia.buttonUp(5) && this.cancelAction) {
+				if (Hestia.buttonUp(this.buttons.cancel) && this.cancelAction) {
 				    this.cancelAction();
 				}
 			}
@@ -1252,6 +1337,9 @@ var TextBox = module.exports = (function(){
 		}
 		if (params.charHeight !== undefined) {
 		    textBox.charHeight = params.charHeight;
+		}
+		if (params.buttons !== undefined) {
+		    textBox.buttons = params.buttons;
 		}
 		textBox.dirty = true;
 		return textBox;
