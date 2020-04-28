@@ -60,11 +60,26 @@ var init = function() {
 };
 
 let ticks = 0;
+let movingAverage = 0;
 var update = function() {
 	ticks = (ticks + 1) % 130;
     Routines.update();
     progressBar.update();
     gridBox.update();
+    var times = Hestia.frameTimes();
+    if (times.length == 10) {
+        movingAverage = 0;
+        let count = 0;
+        for(let i = 0; i < 10; i++) {
+            if (times[i] < 5000) {
+                movingAverage += times[i];
+                count += 1;
+            }
+        }
+        if (count > 0) {
+            movingAverage /= count;
+        }
+    }
 };
 
 var draw = function() {
@@ -89,11 +104,24 @@ var draw = function() {
 		yPos += 24;
 	}
 	
+	yPos = 24;
+	for (let idx = 0; idx < config.fonts.length; idx++) 
+	{
+		let spacing = config.fonts[idx].height + 2;
+		Hestia.setFont(config.fonts[idx].name);
+		Hestia.drawText("The quick brown fox, jumps over the lazy dog!?", 320, yPos, 21);
+		yPos += spacing;
+		Hestia.drawText("The quick brown fox, jumps over the lazy dog!?".toUpperCase(), 320, yPos, 21);
+		yPos += spacing;
+		Hestia.drawText("Also: \"12 birbs\", { <'need'> } to read; array[0].", 320, yPos, 21);
+		yPos += spacing;
+		Hestia.drawText("(4%2) + ((8*2)/4) - 2 = 2", 320, yPos, 21);		
+		yPos += 24;
+	}
+	
 	Hestia.setFont("micro");
     progressBar.draw();
-    
-   
-    
+
     gridBox.x = 5;
     gridBox.dirty = true;
     gridBox.draw();
@@ -105,6 +133,12 @@ var draw = function() {
 
     Hestia.currentFont().spacing = 2;
     drawOutlinedText("The quick brown fox, jumps over the lazy dog!?".toUpperCase(), 12, yPos, 26, 9);
+    yPos += 24;
+    Hestia.currentFont().spacing = 1;
+    if (movingAverage > 0) {
+        let fps = Math.floor(1000 / movingAverage);
+        drawOutlinedText("" + Math.floor(movingAverage) + " = " + fps, 12, yPos, 27, 21);
+    }
     Hestia.currentFont().spacing = 0;
 
 	drawCursor(); 

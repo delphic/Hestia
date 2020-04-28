@@ -3,7 +3,7 @@
 var Hestia = module.exports = {};
 
 var canvas, ctx, palette, paletteIndex, hideCursor;
-var tickRate, ticks, lastTime, elapsed, pause, lockCount = 0;
+var tickRate = 30, ticks = 0, lastTime, elapsed, pause, lockCount = 0;
 var fonts = {}, currentFont;
 var palettiseCanvas;
 var spriteSheet, spriteSheets = {}, sprites = [];
@@ -499,12 +499,17 @@ var setFont = Hestia.setFont = function(fontName) {
 	}
 };
 
+Hestia.frameTimes = function() {
+    return frameTimes;
+};
 
 // Private Methods
+var frameTimes = [];
 var tick = function() {
 	if (lockCount === 0) {
-		elapsed = (Date.now() - lastTime) / 1000;
-		if (ticks === 0 || elapsed > 1 / tickRate) {
+		elapsed = (Date.now() - lastTime);
+		if (ticks === 0 || elapsed > 1000 / tickRate) {
+		    frameTimes[ticks%10] = elapsed;
 			lastTime = Date.now();
 			ticks++; 
 			
