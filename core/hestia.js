@@ -454,18 +454,33 @@ var drawText = Hestia.drawText = function(text, x, y, c) {
 			w = currentFont[letter].width;
 		}
 
+		let alt = true; // True = faster in chrome, False = faster in FF (*sigh*) 
+		// After checking frame timing, FF is solid 60 FPS either way, lol
 		let xOffset = 0, yOffset = 0;
+		let cw = 1;
 		for (var p = 0; p < n; p++) {
 			xOffset = p % currentFont.width;				// x offset for this char
 			yOffset = Math.floor(p / currentFont.width);	// y offset for this char
 			if (currentFont[letter].data[p]) {
-				ctx.fillRect(x + offset + xOffset, y + yOffset, 1, 1);
+				if (alt) {
+					if (p + 1 < n && xOffset + 1 < currentFont.width && currentFont[letter].data[p+1]) {
+						cw += 1;
+					} else {
+						ctx.fillRect(x + offset + xOffset - (cw - 1), y + yOffset, cw, 1);
+						cw = 1;
+					}					
+				} else {
+					ctx.fillRect(x + offset + xOffset, y + yOffset, 1, 1);
+				}
 			}
 		}
 		offset += w + currentFont.spacing;
 	}
 	// It may be worth investigating if drawing the text to a canvas in the palette color and then using drawImage to draw the font might be faster.
 };
+
+// TODO: Outline text method so we don't need to do it manually, include option for diagonals, may be worth storing outline data rather than doing the check left / check up / check down
+// Should try the different methods and compare.
 
 var measureText = Hestia.measureText = function(text) {
     let length = 0;
@@ -505,11 +520,17 @@ Hestia.frameTimes = function() {
 
 // Private Methods
 var frameTimes = [];
+var aheadTime = 0;
 var tick = function() {
 	if (lockCount === 0) {
 		elapsed = (Date.now() - lastTime);
-		if (ticks === 0 || elapsed > 1000 / tickRate) {
-		    frameTimes[ticks%10] = elapsed;
+		// This is a hard clamp, but I think the way request animation frame works
+		// this can result in 'missed' frames, should probably keep an ahead timer
+		// which means can execute up to half a frame ahead?
+		if (ticks === 0 || elapsed > (500 + aheadTime) / tickRate) {
+			aheadTime = Math.min(500, elapsed - (1000 / tickRate));	
+			// ^^ Is this doing what you think it's doing? It seems to be working but the 500 is kinda suspect to me.
+		    frameTimes[ticks%30] = elapsed;
 			lastTime = Date.now();
 			ticks++; 
 			

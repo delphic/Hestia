@@ -60,24 +60,29 @@ var init = function() {
 };
 
 let ticks = 0;
-let movingAverage = 0;
+let fps = 0, movingAverage = 0, frameTimes = [], maxFrameTime = 0;
 var update = function() {
 	ticks = (ticks + 1) % 130;
     Routines.update();
     progressBar.update();
     gridBox.update();
-    var times = Hestia.frameTimes();
-    if (times.length == 10) {
+    frameTimes = Hestia.frameTimes();
+    if (frameTimes.length == 30) {
         movingAverage = 0;
+        maxFrameTime = 0;
         let count = 0;
-        for(let i = 0; i < 10; i++) {
-            if (times[i] < 5000) {
-                movingAverage += times[i];
+        for(let i = 0; i < 30; i++) {
+            if (frameTimes[i] < 5000) {
+            	if (frameTimes[i] > maxFrameTime) {
+            		maxFrameTime = frameTimes[i];
+            	}
+                movingAverage += frameTimes[i];
                 count += 1;
             }
         }
         if (count > 0) {
-            movingAverage /= count;
+           movingAverage /= count;
+           fps = Math.floor(1000 / movingAverage);
         }
     }
 };
@@ -86,7 +91,7 @@ var draw = function() {
 	Hestia.clear(1);
 	
 	Hestia.setFont("micro");
-	drawPalette(0,0,10);
+	drawPalette(34,0,10);
 
 	let idx = 0;
 	let yPos = 24;
@@ -134,14 +139,24 @@ var draw = function() {
     Hestia.currentFont().spacing = 2;
     drawOutlinedText("The quick brown fox, jumps over the lazy dog!?".toUpperCase(), 12, yPos, 26, 9);
     yPos += 24;
-    Hestia.currentFont().spacing = 1;
-    if (movingAverage > 0) {
-        let fps = Math.floor(1000 / movingAverage);
-        drawOutlinedText("" + Math.floor(movingAverage) + " = " + fps, 12, yPos, 27, 21);
-    }
     Hestia.currentFont().spacing = 0;
 
+    drawFPS(1, 1);
+
 	drawCursor(); 
+};
+
+var drawFPS = function(x, y) {
+	// Toggable would be nice, i.e. if you click it it expands contracts, and in small form it just shows number
+	Hestia.fillRect(x, y, 32, 32, 0);
+	let maxBarHeight = 32-9;
+	for(let i = 0, l = frameTimes.length; i < l; i++) {
+		let height = Math.floor(maxBarHeight *(frameTimes[i]/(1.2 * maxFrameTime)));
+		Hestia.fillRect(x+1+i, y+1+(maxBarHeight-height), 1, height, 9);
+	}
+	Hestia.setFont("micro");
+	Hestia.drawText("" + fps + " FPS", x + 4, y + 32 - 7, 9);
+
 };
 
 var drawPalette = function(x, y, size) {
