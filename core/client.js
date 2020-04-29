@@ -2,3 +2,4 @@
 Hestia = require('./hestia.js');
 HestiaUI = require('../utils/ui.js');
 Routines = require('../utils/routines.js');
+HestiaDebug = require('../utils/fpscounter.js');

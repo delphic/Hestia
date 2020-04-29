@@ -239,7 +239,8 @@ var HestiaAudio = module.exports = function() {
 Hestia = require('./hestia.js');
 HestiaUI = require('../utils/ui.js');
 Routines = require('../utils/routines.js');
-},{"../utils/routines.js":7,"../utils/ui.js":8,"./hestia.js":4}],3:[function(require,module,exports){
+HestiaDebug = require('../utils/fpscounter.js');
+},{"../utils/fpscounter.js":7,"../utils/routines.js":8,"../utils/ui.js":9,"./hestia.js":4}],3:[function(require,module,exports){
 "use strict";
 var Font = module.exports = (function(){
     var exports = {};
@@ -877,7 +878,6 @@ var generateLetterOutline = function(data, width, height) {
 			if (j === height - 1 || data[p+width] === 0) {
 				outlineData[(oi) + (oj + 1) * owidth] = 1;
 			}
-			
 			// Up Left
 			if (i === 0 || j === 0 || data[p-(width+1)] === 0) {
 				outlineData[(oi - 1) + (oj - 1) * owidth] = 1;				
@@ -898,11 +898,6 @@ var generateLetterOutline = function(data, width, height) {
 	}
 	return outlineData;
 };
-
-// So just write a draw text outline function that generates outline if it's not in letter obj, and then iterates in the larger outline space on the outline data (generated or cached)
-
-// TODO: Outline text method so we don't need to do it manually, include option for diagonals, may be worth storing outline data rather than doing the check left / check up / check down
-// Should try the different methods and compare.x
 
 var measureText = Hestia.measureText = function(text) {
     let length = 0;
@@ -1179,6 +1174,51 @@ var SpriteSheet = module.exports = (function(){
     return exports;
 })();
 },{}],7:[function(require,module,exports){
+var fpsCounter = module.exports = (function() {
+	// Toggable would be nice, i.e. if you click it it expands contracts, and in small form it just shows number
+	var exports = {};
+	var fps = 0, movingAverage = 0, frameTimes = [], maxFrameTime = 0;
+	var update = exports.update = function() {
+		frameTimes = Hestia.frameTimes();
+		if (frameTimes.length == 30) {
+		    movingAverage = 0;
+		    maxFrameTime = 0;
+		    let count = 0;
+		    for(let i = 0; i < 30; i++) {
+		        if (frameTimes[i] < 5000) {
+		        	if (frameTimes[i] > maxFrameTime) {
+		        		maxFrameTime = frameTimes[i];
+		        	}
+		            movingAverage += frameTimes[i];
+		            count += 1;
+		        }
+		    }
+		    if (count > 0) {
+		       movingAverage /= count;
+		       fps = Math.round(1000 / movingAverage);
+		    }
+		}
+	};
+
+	var draw = exports.draw = function(x, y, c, bgColor, collapse) {
+		if (!collapse) {
+			Hestia.fillRect(x, y, 32, 32, bgColor);
+			let maxBarHeight = 32-9;
+			for(let i = 0, l = frameTimes.length; i < l; i++) {
+				let height = Math.floor(maxBarHeight *(frameTimes[i]/(1.2 * maxFrameTime)));
+				Hestia.fillRect(x+1+i, y+1+(maxBarHeight-height), 1, height, c);
+			}
+			Hestia.setFont("micro");
+			Hestia.drawText("" + fps + " FPS", x + 4, y + 32 - 7, c);
+		} else {
+			Hestia.fillRect(x, y, 32, 8, bgColor);
+			Hestia.setFont("micro");
+			Hestia.drawText("" + fps + " FPS", x + 4, y + 1, c);
+		}
+	};
+	return exports;
+})();
+},{}],8:[function(require,module,exports){
 // Simple predicate based routines, that run for a number of updates.
 // Consider use of https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Iterators_and_Generators
 var Routines = module.exports = (function(){
@@ -1215,7 +1255,7 @@ var Routines = module.exports = (function(){
     
     return exports;
 })();
-},{}],8:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 "use strict";
 var HestiaUI = module.exports = (function(){
     var exports = {};
@@ -1223,7 +1263,7 @@ var HestiaUI = module.exports = (function(){
     exports.ProgressBar = require('./ui/progressbar.js');
     return exports;
 })();
-},{"./ui/progressbar.js":9,"./ui/textbox.js":10}],9:[function(require,module,exports){
+},{"./ui/progressbar.js":10,"./ui/textbox.js":11}],10:[function(require,module,exports){
 "use strict";
 var ProgressBar = module.exports = (function() {
     var exports = {};
@@ -1298,7 +1338,7 @@ var ProgressBar = module.exports = (function() {
     
     return exports;
 })();
-},{}],10:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 "use strict";
 var TextBox = module.exports = (function(){
     var exports = {};

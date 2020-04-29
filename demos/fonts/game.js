@@ -1,5 +1,6 @@
 var progressBar;
 var gridBox;
+var fpsCounter = HestiaDebug;
 
 var colorCycleRoutine = function(elapsed) {
     if (elapsed >= 130) {
@@ -59,34 +60,15 @@ var init = function() {
     Routines.add(colorCycleRoutine);
 };
 
+
 let ticks = 0;
-let fps = 0, movingAverage = 0, frameTimes = [], maxFrameTime = 0;
+
 var update = function() {
 	ticks = (ticks + 1) % 130;
     Routines.update();
     progressBar.update();
     gridBox.update();
-
-    // FPS update
-    frameTimes = Hestia.frameTimes();
-    if (frameTimes.length == 30) {
-        movingAverage = 0;
-        maxFrameTime = 0;
-        let count = 0;
-        for(let i = 0; i < 30; i++) {
-            if (frameTimes[i] < 5000) {
-            	if (frameTimes[i] > maxFrameTime) {
-            		maxFrameTime = frameTimes[i];
-            	}
-                movingAverage += frameTimes[i];
-                count += 1;
-            }
-        }
-        if (count > 0) {
-           movingAverage /= count;
-           fps = Math.round(1000 / movingAverage);
-        }
-    }
+    fpsCounter.update();
 };
 
 var draw = function() {
@@ -143,23 +125,11 @@ var draw = function() {
     yPos += 24;
     Hestia.currentFont().spacing = 0;
 
-    drawFPS(1, 1);
+    fpsCounter.draw(0, 0, 19, 0);
 
 	drawCursor(); 
 };
 
-var drawFPS = function(x, y) {
-	// Toggable would be nice, i.e. if you click it it expands contracts, and in small form it just shows number
-	Hestia.fillRect(x, y, 32, 32, 0);
-	let maxBarHeight = 32-9;
-	for(let i = 0, l = frameTimes.length; i < l; i++) {
-		let height = Math.floor(maxBarHeight *(frameTimes[i]/(1.2 * maxFrameTime)));
-		Hestia.fillRect(x+1+i, y+1+(maxBarHeight-height), 1, height, 9);
-	}
-	Hestia.setFont("micro");
-	Hestia.drawText("" + fps + " FPS", x + 4, y + 32 - 7, 9);
-
-};
 
 var drawPalette = function(x, y, size) {
 	var l = Hestia.palette().length;
