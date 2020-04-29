@@ -454,24 +454,21 @@ var drawText = Hestia.drawText = function(text, x, y, c) {
 			w = currentFont[letter].width;
 		}
 
-		let alt = true; // True = faster in chrome, False = faster in FF (*sigh*) 
-		// After checking frame timing, FF is solid 60 FPS either way, lol
 		let xOffset = 0, yOffset = 0;
 		let cw = 1;
 		for (var p = 0; p < n; p++) {
-			xOffset = p % currentFont.width;				// x offset for this char
-			yOffset = Math.floor(p / currentFont.width);	// y offset for this char
+			xOffset = p % currentFont.width;				// x offset for this pixel
+			yOffset = Math.floor(p / currentFont.width);	// y offset for this pixel
 			if (currentFont[letter].data[p]) {
-				if (alt) {
-					if (p + 1 < n && xOffset + 1 < currentFont.width && currentFont[letter].data[p+1]) {
-						cw += 1;
-					} else {
-						ctx.fillRect(x + offset + xOffset - (cw - 1), y + yOffset, cw, 1);
-						cw = 1;
-					}					
+				if (p + 1 < n && xOffset + 1 < currentFont.width && currentFont[letter].data[p+1]) {
+					cw += 1;
 				} else {
-					ctx.fillRect(x + offset + xOffset, y + yOffset, 1, 1);
-				}
+					ctx.fillRect(x + offset + xOffset - (cw - 1), y + yOffset, cw, 1);
+					cw = 1;
+				}				
+				// Old method - was marginally faster in FF, but faster in chrome 
+				// FF has better performance in general so chrome needs the boost more 
+				// ctx.fillRect(x + offset + xOffset, y + yOffset, 1, 1);
 			}
 		}
 		offset += w + currentFont.spacing;
@@ -479,8 +476,103 @@ var drawText = Hestia.drawText = function(text, x, y, c) {
 	// It may be worth investigating if drawing the text to a canvas in the palette color and then using drawImage to draw the font might be faster.
 };
 
-// TODO: Outline text method so we don't need to do it manually, include option for diagonals, may be worth storing outline data rather than doing the check left / check up / check down
-// Should try the different methods and compare.
+var drawTextOutline = Hestia.drawTextOutline = function(text, x, y, c) {
+    setPaletteIndex(c);
+	if (currentFont.capsOnly) {
+		text = text.toUpperCase();
+	}
+
+	var n = (currentFont.width + 2) * (currentFont.height + 2);
+	let offset = 0;	// offset based on text so far
+	for(var i = 0, l = text.length; i < l; i++) {
+		var letter = text.substr(i,1);
+
+		if (!currentFont[letter]) {
+    		offset += currentFont.width + currentFont.spacing;
+			continue;
+		}
+
+		let ow = currentFont.width + 2;
+		let w = currentFont.width;
+		if (currentFont[letter].width) {
+			// some characters have specific widths
+			w = currentFont[letter].width;
+		}
+
+		if (!currentFont[letter].outlineData) {
+			currentFont[letter].outlineData = generateLetterOutline(currentFont[letter].data, currentFont.width, currentFont.height);
+		}
+
+		let xOffset = 0, yOffset = 0;
+		let cw = 1;
+		for (var p = 0; p < n; p++) {
+			xOffset = p % ow;				// x offset for this pixel
+			yOffset = Math.floor(p / ow);	// y offset for this pixel
+			if (currentFont[letter].outlineData[p]) {
+				if (p + 1 < n && xOffset + 1 < ow + 2 && currentFont[letter].outlineData[p+1]) {
+					cw += 1;
+				} else {
+					ctx.fillRect(x - 1 + offset + xOffset - (cw - 1), y - 1 + yOffset, cw, 1);
+					cw = 1;
+				}
+			}
+		}
+		offset += w + currentFont.spacing;
+	}
+};
+
+var generateLetterOutline = function(data, width, height) {
+	var outlineData = [], i = 0, j = 0, idx = 0, oi = 1, oj = 1, owidth = width + 2;
+
+	// Initialise the outline data
+	for (var p = 0, n = owidth * (height + 2); p < n; p++) {
+		outlineData[p] = 0;
+	}
+
+	for (p = 0, n = width * height; p < n; p++) {
+		// Coordinates in letter space
+		i = p % width;
+		j = Math.floor(p / (width));
+		// Coordinates in outline space
+		oi = i + 1;
+		oj = j + 1;
+		if (data[p] != 0) {
+			// Left
+			if (i === 0 || data[p-1] === 0) {
+				outlineData[(oi - 1) + oj * owidth] = 1;
+			}
+			// Right
+			if (i === width - 1 || data[p+1] === 0) {
+				outlineData[(oi + 1) + oj * owidth] = 1;
+			}
+			// Up
+			if (j === 0 || data[p-width] === 0) {
+				outlineData[(oi) + (oj - 1) * owidth] = 1;
+			}
+			// Down
+			if (j === height - 1 || data[p+width] === 0) {
+				outlineData[(oi) + (oj + 1) * owidth] = 1;
+			}
+			// Up Left
+			if (i === 0 || j === 0 || data[p-(width+1)] === 0) {
+				outlineData[(oi - 1) + (oj - 1) * owidth] = 1;				
+			}
+			// Up Right
+			if (i === width - 1|| j === 0 || data[p-(width-1)] === 0) {
+				outlineData[(oi + 1) + (oj - 1) * owidth] = 1;				
+			}
+			// Down Left
+			if (i === 0 || j === height-1 || data[p+(width-1)] === 0) {
+				outlineData[(oi - 1) + (oj + 1) * owidth] = 1;				
+			}
+			// Down Right
+			if (i === width - 1|| j === height-1 || data[p+(width+1)] === 0) {
+				outlineData[(oi + 1) + (oj + 1) * owidth] = 1;				
+			}
+		}
+	}
+	return outlineData;
+};
 
 var measureText = Hestia.measureText = function(text) {
     let length = 0;

@@ -66,6 +66,8 @@ var update = function() {
     Routines.update();
     progressBar.update();
     gridBox.update();
+
+    // FPS update
     frameTimes = Hestia.frameTimes();
     if (frameTimes.length == 30) {
         movingAverage = 0;
@@ -82,7 +84,7 @@ var update = function() {
         }
         if (count > 0) {
            movingAverage /= count;
-           fps = Math.floor(1000 / movingAverage);
+           fps = Math.round(1000 / movingAverage);
         }
     }
 };
@@ -170,16 +172,7 @@ var drawPalette = function(x, y, size) {
 
 var drawOutlinedText = function(text, x, y, c, oc) {
     // Adjacent 
-	Hestia.drawText(text, x + 0, y - 1, oc);
-	Hestia.drawText(text, x - 1, y + 0, oc);
-	Hestia.drawText(text, x + 1, y + 0, oc);
-	Hestia.drawText(text, x + 0, y + 1, oc);
-
-    // Diagonal
-	Hestia.drawText(text, x - 1, y - 1, oc);
-	Hestia.drawText(text, x - 1, y + 1, oc);
-	Hestia.drawText(text, x + 1, y - 1, oc);
-	Hestia.drawText(text, x + 1, y + 1, oc);
+    Hestia.drawTextOutline(text, x, y, oc);
 	
 	// The Text
 	Hestia.drawText(text, x, y, c);
