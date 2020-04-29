@@ -75,7 +75,7 @@ var draw = function() {
 	Hestia.clear(1);
 	
 	Hestia.setFont("micro");
-	drawPalette(34,0,10);
+	drawPalette(0,0,10);
 
 	let idx = 0;
 	let yPos = 24;
@@ -125,7 +125,7 @@ var draw = function() {
     yPos += 24;
     Hestia.currentFont().spacing = 0;
 
-    fpsCounter.draw(0, 0, 19, 0);
+    fpsCounter.draw(config.width - 32, 0, 19, 0);
 
 	drawCursor(); 
 };
