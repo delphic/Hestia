@@ -189,13 +189,11 @@ var HestiaAudio = module.exports = function() {
         if (delay === undefined) {
             delay = 0;
         }
-        if (duration === undefined) {
-            // 120 bpm, 1 note
-            duration = 0.5;
-        }
         
         osc.start(audioContext.currentTime + delay);
-        osc.stop(audioContext.currentTime + delay + duration);
+        if (duration !== undefined) {
+            osc.stop(audioContext.currentTime + delay + duration);
+        }
 
         oscList[octave][note] = osc;
         return osc;

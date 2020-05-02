@@ -130,7 +130,6 @@ var draw = function() {
 	drawCursor(); 
 };
 
-
 var drawPalette = function(x, y, size) {
 	var l = Hestia.palette().length;
 	for(var i = 0; i < l; i++) {
@@ -141,10 +140,7 @@ var drawPalette = function(x, y, size) {
 };
 
 var drawOutlinedText = function(text, x, y, c, oc) {
-    // Adjacent 
     Hestia.drawTextOutline(text, x, y, oc);
-	
-	// The Text
 	Hestia.drawText(text, x, y, c);
 };
 
