@@ -2,6 +2,106 @@
 var Hestia = window.Hestia;
 var HestiaDebug = window.HestiaDebug;
 
+var Button = (function(){
+    var exports = {};
+    var proto = {
+        draw: function() { 
+            if (this.pressed) {
+                Hestia.fillRect(this.x, this.y, this.width, this.height, this.pc);
+            } else {
+                Hestia.fillRect(this.x, this.y, this.width, this.height, this.c);
+            }
+            Hestia.drawRect(this.x, this.y, this.width, this.height, this.bC);
+            Hestia.drawText(this.text, this.x + this.tx, this.y + this.ty, this.tc);
+        },
+        update: function() {
+            if (Hestia.mouseButtonDown(0) || (this.slide && Hestia.mouseButton(0))) {
+                let mousePos = Hestia.mousePosition();
+                if (mousePos[0] >= this.x && mousePos[0] < this.x + this.width && mousePos[1] >= this.y && mousePos[1] < this.y + this.height) {
+                    if (!this.pressed) {
+                        this.pressed = true;
+                        if (this.buttonDown) {
+                            this.buttonDown(this);
+                        }
+                    }
+                } else if (this.slide && this.pressed) {
+                    this.pressed = false;
+                    this.off();
+                    if (this.buttonUp) {
+                        this.buttonUp(this);
+                    }
+                }
+            }
+            if (Hestia.mouseButtonUp(0) && this.pressed) {
+                this.pressed = false;
+                if (this.buttonUp) {
+                    this.buttonUp(this);
+                }
+            }
+            if (this.focused && this.confirmButtons) {
+                for(let i = 0, l = this.confirmButtons.length; i < l; i++) {
+                    if (Hestia.buttonDown(this.confirmButtons[i])) {
+                        this.pressCount += 1;
+                    }
+                    if (Hestia.buttonUp(this.confirmButtons[i])) {
+                        this.pressCount -= 1;
+                    }
+                }
+                let wasPressed = this.pressed;
+                this.pressed = (this.pressCount > 0);
+                if (!wasPressed && this.pressed) {
+                    if (this.buttonDown) {
+                        this.buttonDown(this);
+                    }
+                } else if (wasPressed && !this.pressed) {
+                    if (this.buttonUp) {
+                        this.buttonUp(this);
+                    }
+                }
+            }
+        }
+    };
+    
+    exports.create = function(params) {
+        var button = Object.create(proto);
+        
+        button.x = params.x;
+        button.y = params.y;
+        button.width = params.width;
+        button.height = params.height;
+        
+        button.pressed = false;
+        button.focused = false;
+        button.pressCount = 0;
+        button.confirmButtons = params.confirmButtons;
+        
+        button.slide = params.slide;
+        
+        button.buttonDown = params.buttonDown;
+        button.buttonUp = params.buttonUp;
+        
+        button.text = params.text;
+        button.tx = params.tx;
+        button.ty = params.ty;
+        
+        button.c = params.color;
+        button.bc = params.borderColor;
+        button.tc = params.textColor;
+        button.pc = params.pressedColor;
+        
+        button.focus = function() {
+            button.focused = true;
+        };
+        button.blur = function() {
+            button.focused = false;
+        };
+        
+        return button;
+    };
+    
+    return exports;
+})();
+
 var Key = (function(){
     var exports = {};
     var proto = {
@@ -79,6 +179,7 @@ var Key = (function(){
 
 var keys = [];
 var keyDownCount = 0;
+var ffviiButton;
 
 var init = function() {
     
@@ -113,6 +214,23 @@ var init = function() {
             offset += 5;
         }
     }
+    
+    ffviiButton = Button.create({
+        x: 64 + offset,
+        y: 32,
+        width: 32,
+        height: 16,
+        buttonDown: function(button) {
+            playFF7Theme();
+        },
+        text: "FFVII",
+        tx: 2,
+        ty: 2,
+        color: 18,
+        pressedColor: 17,
+        textColor: 21,
+        borderColor: 14,
+    });
 };
 
 let playing = false;
@@ -121,67 +239,64 @@ let playFF7Theme = function() {
     if (!playing) {
         playing = true;
         let delay = 0;
-        Hestia.audio.playNote(4, "C", waveform, 1, delay);
-        delay += 1;
-        Hestia.audio.playNote(4, "D", waveform, 0.5, delay);
-        delay += 0.5;
-        Hestia.audio.playNote(4, "E", waveform, 0.5, delay);
-        delay += 0.5;
-        Hestia.audio.playNote(4, "B", waveform, 1, delay);
-        delay += 1;
-        Hestia.audio.playNote(4, "A", waveform, 1, delay);
-        delay += 1.5;
+
+        // Dequantise these notets so it doesn't sound robotic
+        let offset = 0;
+        let randomiseOffset = function(){
+            let halfOffsetSize = 0.02;
+            offset = (Math.random() * 2 * halfOffsetSize) - halfOffsetSize;
+        };
+
+        let queueNote = function(note, length, octaveOffset) {
+            let octave = 4;
+            if (octaveOffset) {
+                octave += octaveOffset;
+            }
+            Hestia.audio.playNote(octave, note, waveform, length, delay + offset);
+            delay += length;
+            randomiseOffset();
+        };
+        let rest = function(length) {
+            delay += length + offset; // This'll desync them somewhat, probably don't want? if there's backing
+            randomiseOffset();
+        };
         
-        Hestia.audio.playNote(4, "C", waveform, 0.5, delay);
-        delay += 0.5;
-        Hestia.audio.playNote(4, "D", waveform, 0.5, delay);
-        delay += 0.5;
-        Hestia.audio.playNote(4, "E", waveform, 0.5, delay);
-        delay += 0.5;
-        Hestia.audio.playNote(4, "G", waveform, 0.5, delay);
-        delay += 0.5;
-        Hestia.audio.playNote(4, "F", waveform, 0.5, delay);
-        delay += 0.5;
-        Hestia.audio.playNote(4, "C", waveform, 0.5, delay);
-        delay += 0.5;
-        Hestia.audio.playNote(4, "D", waveform, 0.5, delay);
-        delay += 0.5;
-        Hestia.audio.playNote(4, "C", waveform, 1, delay);
-        delay += 1;
-        
-        Hestia.audio.playNote(4, "D", waveform, 0.5, delay);
-        delay += 0.5;
-        Hestia.audio.playNote(4, "E", waveform, 0.5, delay);
-        delay += 0.5;
-        Hestia.audio.playNote(4, "B", waveform, 1, delay);
-        delay += 1;
-        Hestia.audio.playNote(4, "A", waveform, 1, delay);
-        delay += 1.5;
-        
-        Hestia.audio.playNote(4, "C", waveform, 0.5, delay);
-        delay += 0.5;
-        Hestia.audio.playNote(4, "D", waveform, 0.5, delay);
-        delay += 0.5;
-        Hestia.audio.playNote(4, "E", waveform, 0.5, delay);
-        delay += 0.5;
-        Hestia.audio.playNote(4, "G", waveform, 1, delay);
-        delay += 1;
-        Hestia.audio.playNote(4, "F", waveform, 0.5, delay);
-        delay += 0.5;
-        
-        Hestia.audio.playNote(3, "B", waveform, 0.5, delay);
-        delay += 0.5;
-        Hestia.audio.playNote(4, "E", waveform, 1, delay);
-        delay += 1.5;
-        Hestia.audio.playNote(4, "D", waveform, 0.5, delay);
-        delay += 0.5;
-        Hestia.audio.playNote(4, "C", waveform, 1, delay);
-        delay += 1;
-        Hestia.audio.playNote(3, "B", waveform, 1, delay);
-        delay += 1;
-        Hestia.audio.playNote(4, "C", waveform, 1.5, delay);
-        delay += 1.5;
-        
+        queueNote("C", 1);
+        queueNote("D", 0.5);
+        queueNote("E", 0.5);
+        queueNote("B", 1);
+        queueNote("A", 1);
+        rest(0.5);
+
+        queueNote("C", 0.5);
+        queueNote("D", 0.5);
+        queueNote("E", 0.5);
+        queueNote("G", 0.5);
+        queueNote("F", 0.5);
+        queueNote("C", 0.5);
+        queueNote("D", 0.5);
+        queueNote("C", 1);
+
+        queueNote("D", 0.5);
+        queueNote("E", 0.5);
+        queueNote("B", 1);
+        queueNote("A", 1);
+        rest(0.5);
+
+        queueNote("C", 0.5);
+        queueNote("D", 0.5);
+        queueNote("E", 0.5);
+        queueNote("G", 1);
+        queueNote("F", 0.5);
+
+        queueNote("B", 0.5, -1);
+        queueNote("E", 1);
+        rest(0.5);
+        queueNote("D", 0.5);
+        queueNote("C", 1);
+        queueNote("B", 1, -1);
+        queueNote("C", 1.5);
+
         window.setTimeout(function() { playing = false }, delay*1000);
     }
 };
@@ -202,9 +317,7 @@ var update = function() {
         waveform = (waveform + 1) % 5;
         Key.setWaveform(waveform);
     }
-    if (keyDownCount === 0 && Hestia.mouseButtonDown(0)) {
-        playFF7Theme();
-    }
+    ffviiButton.update();
 };
 
 var playErrorTone = function() {
@@ -224,6 +337,7 @@ var draw = function() {
 	for (let i = 0, l = keys.length; i < l; i++) {
         keys[i].draw();
     }
+    ffviiButton.draw();
 	HestiaDebug.draw(config.width-32, 0, 15, 0);
 	drawCursor();
 };
