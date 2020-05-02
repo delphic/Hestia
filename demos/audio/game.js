@@ -1,6 +1,7 @@
 "use strict";
 var Hestia = window.Hestia;
 var HestiaDebug = window.HestiaDebug;
+var WaveTables = window.WaveTables;
 
 var Button = (function(){
     var exports = {};
@@ -126,6 +127,7 @@ var Key = (function(){
         update: function() {
             if (Hestia.mouseButtonDown(0) || Hestia.mouseButton(0)) {
                 let mousePos = Hestia.mousePosition();
+                // TODO: Dead zone based on black keys!
                 if (mousePos[0] >= this.x && mousePos[0] < this.x + this.width && mousePos[1] >= this.y && mousePos[1] < this.y + this.height) {
                     if (!this.playing) {
                         this.playing = true;
@@ -181,11 +183,13 @@ var keys = [];
 var keyDownCount = 0;
 var ffviiButton;
 
+// You get some interesting effects if you keep layering oscs on top of each other
+// as I noticed when the lowest two frequency notes wouldn't stop when you lifted off the key!
+
 var init = function() {
-    
-    let octave = 3;
+    let octave = 0;
     let notes = ["C","D","E","F","G","A","B"];
-    let keyIndex = notes.length -1;
+    let keyIndex = notes.length - 2;
     let offset = 0;
     
     var keyDown = function(key) {
@@ -195,7 +199,8 @@ var init = function() {
         keyDownCount--;
     };
     
-    for(let i = 0; i < 10; i++) {
+    // The note table goes from 0-A to 8-C
+    for(let i = 0; i < 2 + 7 * notes.length + 1; i++) {
         keys.push(Key.create({
             x: 32 + offset,
             y: 32,
@@ -215,9 +220,10 @@ var init = function() {
         }
     }
     
+    // Would be nice if this was a toggle.
     ffviiButton = Button.create({
-        x: 64 + offset,
-        y: 32,
+        x: 32,
+        y: 72 + 16,
         width: 32,
         height: 16,
         buttonDown: function(button) {
@@ -231,6 +237,16 @@ var init = function() {
         textColor: 21,
         borderColor: 14,
     });
+    
+    // TODO: Option to do this via config
+    let names = Object.keys(WaveTables);
+    for (let j = 0, n = names.length; j < n; j++) {
+        Hestia.audio.addCustomWavefrom(names[j], WaveTables[names[j]].real, WaveTables[names[j]].imag);
+    }
+    
+    // TODO: allow specification of json files by name rather than havin to have them as JS
+    
+    // Also TODO: Add attack and release to notes
 };
 
 let playing = false;
@@ -306,15 +322,16 @@ var update = function() {
     for (let i = 0, l = keys.length; i < l; i++) {
         keys[i].update();
     }
+    let numWaveforms = Hestia.audio.getWaveformsArray().length + Hestia.audio.getCustomWaveformsArray().length;
     if (Hestia.buttonDown(4)) {
         waveform -= 1;
         if (waveform < 0) {
-            waveform = 4;
+            waveform = numWaveforms - 1;
         }
         Key.setWaveform(waveform);
     }
     if (Hestia.buttonDown(5)) {
-        waveform = (waveform + 1) % 5;
+        waveform = (waveform + 1) % numWaveforms;
         Key.setWaveform(waveform);
     }
     ffviiButton.update();
@@ -328,10 +345,11 @@ var draw = function() {
 	drawPalette(0,0,12);
 	
 	let waveforms = Hestia.audio.getWaveformsArray();
+	let customWaveforms = Hestia.audio.getCustomWaveformsArray();
 	if (waveform < waveforms.length) {
     	Hestia.drawText(waveforms[waveform], 32, 24, 21);
-	} else {
-	    Hestia.drawText("custom", 32, 24, 21);
+	} else if (waveform - waveforms.length < customWaveforms.length) {
+	    Hestia.drawText(customWaveforms[waveform-waveforms.length], 32, 24, 21);
 	}
 	
 	for (let i = 0, l = keys.length; i < l; i++) {
@@ -385,9 +403,10 @@ window.onload = function() {
 	config.draw = draw;
 	config.canvas = canvas;
 	
-	init();
-    
 	Hestia.init(config);
+	
+	init();
+	
 	Hestia.run();
 };
 

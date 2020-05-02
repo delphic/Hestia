@@ -27,8 +27,9 @@ var HestiaAudio = module.exports = function() {
     var oscList = [];   // Has same structure as noteTable, index by octave and then dictionary by note
     var masterGainNode = null;
     var waveforms = [ "sine", "square", "sawtooth", "triangle" ];
+    var customWaveforms = [], customWaveformNames = [];
     
-    var noteTable, customWaveform, sineTerms, cosineTerms;
+    var noteTable;
     
     // We might want the note tabe indexed by number with a mapping to/from note
     var createNoteTable = function() {
@@ -143,6 +144,10 @@ var HestiaAudio = module.exports = function() {
     exports.getWaveformsArray = function() {
         return waveforms;
     };
+    
+    exports.getCustomWaveformsArray = function() {
+        return customWaveformNames;
+    };
 
     exports.getVolume = function() {
         return masterGainNode.gain.value;
@@ -159,7 +164,7 @@ var HestiaAudio = module.exports = function() {
 
     exports.playNote = function(octave, note, waveformIndex, duration, delay) {
         let freq = 0;
-        if (octave > 0 && octave < noteTable.length) {
+        if (octave >= 0 && octave < noteTable.length) {
             freq = noteTable[octave][note];
         } 
         
@@ -178,10 +183,10 @@ var HestiaAudio = module.exports = function() {
         if (waveformIndex < waveforms.length) {
             osc.type = waveforms[waveformIndex];
         } else {
-            // TODO: Support more than one custom type!
-            osc.setPeriodicWave(customWaveform);
-            // Here are some tasy wavetables:
-            // https://github.com/GoogleChromeLabs/web-audio-samples/tree/gh-pages/samples/audio/wave-tables
+            let customIndex = waveformIndex - waveforms.length;
+            if (customIndex < customWaveforms.length) {
+                osc.setPeriodicWave(customWaveforms[customIndex]);
+            }
         }
         
         osc.frequency.value = freq;
@@ -200,15 +205,20 @@ var HestiaAudio = module.exports = function() {
     };
     
     exports.stopNote = function(octave, note) {
-        if (octave > 0 && octave < oscList.length) {
+        if (octave >= 0 && octave < oscList.length) {
             let osc = oscList[octave][note];
             if (osc) {
                 osc.stop();
             }
         }
     };
+    
+    var addCustomWaveForm = exports.addCustomWavefrom = function(name, real, imag) {
+        customWaveformNames.push(name);
+        return waveforms.length - 1 + customWaveforms.push(audioContext.createPeriodicWave(new Float32Array(real), new Float32Array(imag)));
+    };
 
-    exports.init = function() {
+    exports.init = function(config) {
         noteTable = createNoteTable();
         
         masterGainNode = audioContext.createGain();
@@ -216,9 +226,7 @@ var HestiaAudio = module.exports = function() {
         masterGainNode.gain.value = 1;
 
         // Create Custom Waveform
-        sineTerms = new Float32Array([0, 0, 1, 0, 1]);
-        cosineTerms = new Float32Array(sineTerms.length);
-        customWaveform = audioContext.createPeriodicWave(cosineTerms, sineTerms);
+        addCustomWaveForm("custom", new Float32Array([0, 0, 0, 0, 0]), new Float32Array([0, 0, 1, 0, 1]));
         // This is super cool, would be good to 
         // i) visualise
         // ii) allow configuration of custom wave forms
