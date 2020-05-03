@@ -264,6 +264,8 @@ var HestiaAudio = module.exports = function() {
         if (duration !== undefined && duration > 0) {
             osc.stop(t + duration);
             // Does stop also disconnect nodes? No, is this a problem? Maybe, I dunno!
+            // Trying to reuse nodes results in wierd behaviour when scheduling lots of notes.
+            // presumably because of gain.cancelScheduledValues ?
         }
 
         oscList[octave][note] = osc;

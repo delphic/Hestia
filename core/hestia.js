@@ -536,7 +536,7 @@ var generateLetterOutline = function(data, width, height) {
 		// Coordinates in outline space
 		oi = i + 1;
 		oj = j + 1;
-		if (data[p] != 0) {
+		if (data[p] !== 0) {
 			// Left
 			if (i === 0 || data[p-1] === 0) {
 				outlineData[(oi - 1) + oj * owidth] = 1;

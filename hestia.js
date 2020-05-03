@@ -264,10 +264,13 @@ var HestiaAudio = module.exports = function() {
         osc.start(t);
         if (duration !== undefined && duration > 0) {
             osc.stop(t + duration);
+            // Does stop also disconnect nodes? No, is this a problem? Maybe, I dunno!
         }
 
         oscList[octave][note] = osc;
         gainList[octave][note] = env;
+        // If you scheulde more than one of the same note ^^ this tracking is wrong :D
+        // only noticable if they don't have limited duration though
         return osc;
     };
     
@@ -940,7 +943,7 @@ var generateLetterOutline = function(data, width, height) {
 		// Coordinates in outline space
 		oi = i + 1;
 		oj = j + 1;
-		if (data[p] != 0) {
+		if (data[p] !== 0) {
 			// Left
 			if (i === 0 || data[p-1] === 0) {
 				outlineData[(oi - 1) + oj * owidth] = 1;

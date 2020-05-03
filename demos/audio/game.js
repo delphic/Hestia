@@ -406,7 +406,7 @@ var config = {
 	"width": 960, 
 	"height": 540,
 	"pixelRatio": 2,
-	"tickRate": 60,
+	"tickRate": 30,
 	"palette": "/palettes/aseprite.json",
 	"keys": [ 37, 39, 38, 40, 90, 88], // left, right, up, down, z, x
 	"hideCursor": true
