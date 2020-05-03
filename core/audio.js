@@ -28,7 +28,7 @@ var HestiaAudio = module.exports = function() {
     var masterGainNode = null;
     var waveforms = [ "sine", "square", "sawtooth", "triangle" ];
     var customWaveforms = [], customWaveformNames = [];
-    var lookAhead = 0.1; // If you don't schedule changes at some point ahead, then you get noticable popping noises
+    var lookAhead = 0.01; // If you don't schedule changes at some point ahead, then you get noticable popping noises 
     // https://github.com/Tonejs/Tone.js/wiki/Performance
     
     var noteTable;
@@ -164,6 +164,9 @@ var HestiaAudio = module.exports = function() {
     // with volumes (start with one instrument and then look a mixing it up) and 
     // a playback spead
 
+    // This does have an issue of overlapping notes... if a oscillator is already playing
+    // should reuse it (can you cancel a stop command)?
+    // Or do we want a concept of channels for this?
     exports.playNote = function(octave, note, waveformIndex, duration, delay, attack, release) {
         let freq = 0;
         if (octave >= 0 && octave < noteTable.length) {
