@@ -122,7 +122,7 @@ var Key = (function(){
                 Hestia.fillRect(this.x, this.y, this.width, this.height, 21);
             }
             Hestia.drawRect(this.x, this.y, this.width, this.height, 22);
-            Hestia.drawText(this.note, this.x + 2, this.y + this.height - 7, 0);
+            Hestia.drawText(this.note + this.octave, this.x + 2, this.y + this.height - 7, 0);
         },
         update: function() {
             if (Hestia.mouseButtonDown(0) || Hestia.mouseButton(0)) {
@@ -183,12 +183,27 @@ var keys = [];
 var keyDownCount = 0;
 var ffviiButton;
 
+// TODO:
+/*
+* ADSR - check!
+* Load wavetable json files via hestia.js
+* Keyboard input for piano key press
+* Black keys on keyboard
+* Record keyboard input for playback
+* Randomised music - a wander on the minor pentatonic scale? 
+* SFX   - ramp frequency over time (programmatic)
+*       - visual interface
+* Look at reference seeded SFX reference
+* Invesitage channels as a way to  prevent the playing notes on top of each other issue
+*/
+
 // You get some interesting effects if you keep layering oscs on top of each other
 // as I noticed when the lowest two frequency notes wouldn't stop when you lifted off the key!
 
 var init = function() {
     let octave = 0;
-    let notes = ["C","D","E","F","G","A","B"];
+    let notes = ["C","D","E","F","G","A","B"]; // C Major
+    //let notes = ["C","D","E","G","A"];  // C major pentatonic
     let keyIndex = notes.length - 2;
     let offset = 0;
     
@@ -204,19 +219,19 @@ var init = function() {
         keys.push(Key.create({
             x: 32 + offset,
             y: 32,
-            width: 10,
+            width: 12,
             height: 40,
             octave: octave,
             note: notes[keyIndex],
             keyDown: keyDown,
             keyUp: keyUp
         }));
-        offset += 10;
+        offset += 12;
         keyIndex += 1;
         if (keyIndex === notes.length) {
             keyIndex = 0;
             octave += 1;
-            offset += 5;
+            offset += 6;
         }
     }
     
@@ -240,7 +255,8 @@ var init = function() {
 };
 
 let playing = false;
-let waveform = 0;
+let waveform = 0, env = { a: 0.02, d: 0.02, sustain: 0.7, r: 0.04 };
+// 0.1, 0.2, 0.7, 0.1 sounds breathy, like a flute!
 let playFF7Theme = function() {
     if (!playing) {
         playing = true;
@@ -251,6 +267,7 @@ let playFF7Theme = function() {
         let randomiseOffset = function(){
             let halfOffsetSize = 0.02;
             offset = (Math.random() * 2 * halfOffsetSize) - halfOffsetSize;
+            // ^^ Normal distribution might sound better
         };
 
         let queueNote = function(note, length, octaveOffset) {
@@ -258,9 +275,17 @@ let playFF7Theme = function() {
             if (octaveOffset) {
                 octave += octaveOffset;
             }
-            Hestia.audio.playNote(octave, note, waveform, length, delay + offset);
+            let delayOffset = offset;
+            randomiseOffset();
+            let lengthOffset = -Math.abs(offset);
+            Hestia.audio.playNote(octave, note, waveform, length + lengthOffset, delay + delayOffset, env);
             delay += length;
             randomiseOffset();
+            // ^^ it's possible for notes to overlap with these offsets... is that okay?
+            // Also lets face it humans don't randomly offset their note presses (well they do)
+            // but they do it for effect / musicality, pausing or rushing on... it's more like they
+            // permute the tempo than miss the timings, but they bring the tempo back in line later
+            // (if they're good / have backing) if solo I guess it can go off sync
         };
         let rest = function(length) {
             delay += length + offset; // This'll desync them somewhat, probably don't want? if there's backing

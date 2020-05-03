@@ -164,10 +164,31 @@ var HestiaAudio = module.exports = function() {
     // with volumes (start with one instrument and then look a mixing it up) and 
     // a playback spead
 
+    var createAttackNode = function(t, a) {
+        let env = audioContext.createGain();
+        env.gain.cancelScheduledValues(audioContext.currentTime);
+        env.gain.setValueAtTime(0, t);
+        env.gain.linearRampToValueAtTime(1, t + a);
+        return env;
+    };
+    
+    var createAttackDecayNode = function(t, a, d, sustain) {
+        let env = createAttackNode(t, a);
+        env.gain.linearRampToValueAtTime(sustain, t + a + d);
+        return env;
+    };
+    
+    var createADSRNode = function(t, a, d, s, r, sustain) {
+        let env = createAttackDecayNode(t, a, d, sustain);
+        env.gain.setValueAtTime(sustain, t + a + d + s);
+        env.gain.linearRampToValueAtTime(0, t + a + d + s + r);
+        return env;
+    };
+
     // This does have an issue of overlapping notes... if a oscillator is already playing
     // should reuse it (can you cancel a stop command)?
-    // Or do we want a concept of channels for this?
-    exports.playNote = function(octave, note, waveformIndex, duration, delay, attack, release) {
+    // Or do we want a concept of channels for this?    
+    exports.playNote = function(octave, note, waveformIndex, duration, delay, envelope) {
         let freq = 0;
         if (octave >= 0 && octave < noteTable.length) {
             freq = noteTable[octave][note];
@@ -178,14 +199,14 @@ var HestiaAudio = module.exports = function() {
             return;
         }
         
+        if (delay === undefined) {
+            delay = 0;
+        }
+        
+        let t = audioContext.currentTime + delay + lookAhead; 
+
         // Well you can't call start more than once, so make a new one every time!
         let osc = audioContext.createOscillator();
-        let env = audioContext.createGain();
-        osc.connect(env).connect(masterGainNode);
-        // Would like to check out tracker implementations to see if this is 
-        // how they do things or if there is anyway to reuse.
-        // Maybe we could disconnect the node or change the gain
-        
         if (waveformIndex < waveforms.length) {
             osc.type = waveforms[waveformIndex];
         } else {
@@ -194,30 +215,61 @@ var HestiaAudio = module.exports = function() {
                 osc.setPeriodicWave(customWaveforms[customIndex]);
             }
         }
-        
         osc.frequency.value = freq;
         
-        if (delay === undefined) {
-            delay = 0;
-        }
-        if (attack === undefined) {
-            attack = 0.01;
-        }
-        if (release === undefined) {
-            release = 0.01;
+        // Might be best to have separate functions for playing a sustained note 
+        // and playing a defined length note, rather than using the arguements to figure it out.
+        // Currently support: sustained with attack, sustained with attack and decay + sustain level,
+        // envelope with sustain specified, and envelope with sustain calculated from duration
+        // NOTE specified duration of note overrides envelope sustain value
+        
+        let durationSpecified = (duration !== undefined && duration > 0);
+        let limitedDuration = (duration !== undefined && duration > 0) || (envelope && envelope.s !== undefined);
+        
+        let env, attack = 0.01, decay = 0, sustain = 0, release = 0.01, sustainLevel = 1;
+        if (envelope) { // example envelope format { a: 0.1, d: 0.2, s: 0.4, r: 0.2, sustain: 0.7 }  
+            attack = envelope.a;
+            decay = envelope.d;
+            release = envelope.r;
+            if (durationSpecified) {
+                sustain = Math.max(0, duration - (attack + decay + release));
+            } else if (envelope.s !== undefined) {
+                sustain = envelope.s;
+            } else {
+                sustain = 0;
+            }
+            sustainLevel = envelope.sustain;
+        } else if (durationSpecified) {
+            sustain = Math.max(0, duration - (attack + decay + release));
         }
         
-        env.gain.cancelScheduledValues(audioContext.currentTime);
-        env.gain.setValueAtTime(0, audioContext.currentTime + delay + lookAhead);
-        env.gain.linearRampToValueAtTime(1, audioContext.currentTime + delay + lookAhead + attack);
-        osc.start(audioContext.currentTime + delay + lookAhead);
+        if (limitedDuration && (duration === undefined || duration < attack + decay + release)) {
+            duration = attack + decay + release;
+        }
+
+        if (limitedDuration) {
+            env = createADSRNode(t, attack, decay, sustain, release, sustainLevel);
+        } else if (sustainLevel < 1) {
+            env = createAttackDecayNode(t, attack, decay, sustainLevel);
+        } else {
+            env = createAttackNode(t, attack);
+        }
+        
+        osc.connect(env).connect(masterGainNode);
+        // Would like to check out tracker implementations to see if this is 
+        // how they do things or if there is anyway to reuse, nodes
+        // Maybe we could disconnect the node or leave it connected and let the gain node sort it out
+        
+        osc.start(t);
         if (duration !== undefined && duration > 0) {
-            env.gain.linearRampToValueAtTime(0, audioContext.currentTime + delay + lookAhead + duration - release);
-            osc.stop(audioContext.currentTime + delay + lookAhead + duration);
+            osc.stop(t + duration);
+            // Does stop also disconnect nodes? No, is this a problem? Maybe, I dunno!
         }
 
         oscList[octave][note] = osc;
         gainList[octave][note] = env;
+        // If you scheulde more than one of the same note ^^ this tracking is wrong :D
+        // only noticable if they don't have limited duration though
         return osc;
     };
     
