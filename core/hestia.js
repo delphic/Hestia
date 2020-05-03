@@ -131,7 +131,7 @@ Hestia.init = function(config) {
 	input.init(canvas, config.keys);
 	
 	// Audio
-	audio.init();
+	audio.init(config.audio);
 };
 
 Hestia.run = function() {

@@ -237,7 +237,7 @@ var HestiaAudio = module.exports = function() {
         }
     };
     
-    var addCustomWaveForm = exports.addCustomWavefrom = function(name, real, imag) {
+    var addCustomWaveform = exports.addCustomWaveform = function(name, real, imag) {
         customWaveformNames.push(name);
         return waveforms.length - 1 + customWaveforms.push(audioContext.createPeriodicWave(new Float32Array(real), new Float32Array(imag)));
     };
@@ -248,14 +248,14 @@ var HestiaAudio = module.exports = function() {
         masterGainNode = audioContext.createGain();
         masterGainNode.connect(audioContext.destination);
         masterGainNode.gain.value = 1;
-
-        // Create Custom Waveform
-        addCustomWaveForm("custom", new Float32Array([0, 0, 0, 0, 0]), new Float32Array([0, 0, 1, 0, 1]));
-        // This is super cool, would be good to 
-        // i) visualise
-        // ii) allow configuration of custom wave forms
-        // I wonder if samples in Mod trackers are created this way?
         
+        if (config && config.wavetables && config.wavetables.length > 0) {
+            for (let i = 0, l = config.wavetables.length; i < l; i++) {
+                var wt = config.wavetables[i];
+                addCustomWaveform(wt.name, wt.real, wt.imag);
+            }
+        }
+
         for (let i = 0; i < noteTable.length; i++) {
             oscList[i] = [];
             gainList[i] = [];
@@ -486,7 +486,7 @@ Hestia.init = function(config) {
 	input.init(canvas, config.keys);
 	
 	// Audio
-	audio.init();
+	audio.init(config.audio);
 };
 
 Hestia.run = function() {

@@ -108,7 +108,6 @@ var Key = (function(){
     var proto = {
         waveform: 0,
         on: function() {
-            console.log("play note!");
             Hestia.audio.playNote(this.octave, this.note, this.waveform);
         },
         off: function() {
@@ -238,15 +237,6 @@ var init = function() {
         textColor: 21,
         borderColor: 14,
     });
-    
-    // TODO: Option to do this via config
-    let names = Object.keys(WaveTables);
-    for (let j = 0, n = names.length; j < n; j++) {
-        Hestia.audio.addCustomWavefrom(names[j], WaveTables[names[j]].real, WaveTables[names[j]].imag);
-    }
-    
-    // TODO: allow specification of json files by name rather than havin to have them as JS
-    // When testing can confirm that Noise and Square are the same, and pulse makes... no noise!
 };
 
 let playing = false;
@@ -340,6 +330,7 @@ var update = function() {
 var playErrorTone = function() {
     //Hestia.audio.playNote(4, "G", 1, 0.2); // A very good error tone :P
 };
+
 var draw = function() {
 	Hestia.clear(1);
 	drawPalette(0,0,12);
@@ -402,6 +393,25 @@ window.onload = function() {
 	config.update = update;
 	config.draw = draw;
 	config.canvas = canvas;
+	
+	config.audio = { "wavetables": [] };
+
+	 // Create Custom Waveform
+	config.audio.wavetables.push({
+	    "name": "custom",
+	    "real": [0, 0, 0, 0, 0],
+	    "imag": [0, 0, 1, 0, 1]
+	});
+    // This is super cool, would be good to visualise
+
+    let names = Object.keys(WaveTables);
+    for (let j = 0, n = names.length; j < n; j++) {
+        var wt = WaveTables[names[j]];
+        wt.name = names[j];
+        config.audio.wavetables.push(wt);
+    }
+    // TODO: allow specification of json files by name rather than havin to have them as JS
+    // When testing can confirm that Noise and Square are the same, and pulse makes... no noise!
 	
 	Hestia.init(config);
 	
