@@ -25,10 +25,12 @@ var HestiaAudio = module.exports = function() {
     
     // Working initially from - https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Simple_synth
     var audioContext = new (window.AudioContext || window.webkitAudioContext);
-    var oscList = [];   // Has same structure as noteTable, index by octave and then dictionary by note
+    var oscList = [], gainList = [];   // Has same structure as noteTable, index by octave and then dictionary by note
     var masterGainNode = null;
     var waveforms = [ "sine", "square", "sawtooth", "triangle" ];
     var customWaveforms = [], customWaveformNames = [];
+    var lookAhead = 0.1; // If you don't schedule changes at some point ahead, then you get noticable popping noises
+    // https://github.com/Tonejs/Tone.js/wiki/Performance
     
     var noteTable;
     
@@ -163,7 +165,7 @@ var HestiaAudio = module.exports = function() {
     // with volumes (start with one instrument and then look a mixing it up) and 
     // a playback spead
 
-    exports.playNote = function(octave, note, waveformIndex, duration, delay) {
+    exports.playNote = function(octave, note, waveformIndex, duration, delay, attack, release) {
         let freq = 0;
         if (octave >= 0 && octave < noteTable.length) {
             freq = noteTable[octave][note];
@@ -176,7 +178,8 @@ var HestiaAudio = module.exports = function() {
         
         // Well you can't call start more than once, so make a new one every time!
         let osc = audioContext.createOscillator();
-        osc.connect(masterGainNode);
+        let env = audioContext.createGain();
+        osc.connect(env).connect(masterGainNode);
         // Would like to check out tracker implementations to see if this is 
         // how they do things or if there is anyway to reuse.
         // Maybe we could disconnect the node or change the gain
@@ -195,21 +198,38 @@ var HestiaAudio = module.exports = function() {
         if (delay === undefined) {
             delay = 0;
         }
+        if (attack === undefined) {
+            attack = 0.01;
+        }
+        if (release === undefined) {
+            release = 0.01;
+        }
         
-        osc.start(audioContext.currentTime + delay);
-        if (duration !== undefined) {
-            osc.stop(audioContext.currentTime + delay + duration);
+        env.gain.cancelScheduledValues(audioContext.currentTime);
+        env.gain.setValueAtTime(0, audioContext.currentTime + delay + lookAhead);
+        env.gain.linearRampToValueAtTime(1, audioContext.currentTime + delay + lookAhead + attack);
+        osc.start(audioContext.currentTime + delay + lookAhead);
+        if (duration !== undefined && duration > 0) {
+            env.gain.linearRampToValueAtTime(0, audioContext.currentTime + delay + lookAhead + duration - release);
+            osc.stop(audioContext.currentTime + delay + lookAhead + duration);
         }
 
         oscList[octave][note] = osc;
+        gainList[octave][note] = env;
         return osc;
     };
     
-    exports.stopNote = function(octave, note) {
+    exports.stopNote = function(octave, note, release) {
         if (octave >= 0 && octave < oscList.length) {
             let osc = oscList[octave][note];
+            let env = gainList[octave][note];
             if (osc) {
-                osc.stop();
+                if (release === undefined) {
+                    release = 0.01;
+                }
+                env.gain.setValueAtTime(1, audioContext.currentTime + lookAhead);
+                env.gain.linearRampToValueAtTime(0, audioContext.currentTime + lookAhead + release);
+                osc.stop(audioContext.currentTime + lookAhead + release);
             }
         }
     };
@@ -235,6 +255,7 @@ var HestiaAudio = module.exports = function() {
         
         for (let i = 0; i < noteTable.length; i++) {
             oscList[i] = [];
+            gainList[i] = [];
         }
     };
     

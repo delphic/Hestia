@@ -108,6 +108,7 @@ var Key = (function(){
     var proto = {
         waveform: 0,
         on: function() {
+            console.log("play note!");
             Hestia.audio.playNote(this.octave, this.note, this.waveform);
         },
         off: function() {
@@ -245,8 +246,7 @@ var init = function() {
     }
     
     // TODO: allow specification of json files by name rather than havin to have them as JS
-    
-    // Also TODO: Add attack and release to notes
+    // When testing can confirm that Noise and Square are the same, and pulse makes... no noise!
 };
 
 let playing = false;
