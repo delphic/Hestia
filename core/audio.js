@@ -164,22 +164,22 @@ var HestiaAudio = module.exports = function() {
     // with volumes (start with one instrument and then look a mixing it up) and 
     // a playback spead
 
-    var createAttackNode = function(t, a) {
-        let env = audioContext.createGain();
-        env.gain.cancelScheduledValues(audioContext.currentTime);
+    var createAttackNode = function(env, t, a) {
+//        let env = audioContext.createGain();
+//        env.gain.cancelScheduledValues(audioContext.currentTime);
         env.gain.setValueAtTime(0, t);
         env.gain.linearRampToValueAtTime(1, t + a);
         return env;
     };
     
-    var createAttackDecayNode = function(t, a, d, sustain) {
-        let env = createAttackNode(t, a);
+    var createAttackDecayNode = function(env, t, a, d, sustain) {
+        createAttackNode(env, t, a);
         env.gain.linearRampToValueAtTime(sustain, t + a + d);
         return env;
     };
     
-    var createADSRNode = function(t, a, d, s, r, sustain) {
-        let env = createAttackDecayNode(t, a, d, sustain);
+    var createADSRNode = function(env, t, a, d, s, r, sustain) {
+        createAttackDecayNode(env, t, a, d, sustain);
         env.gain.setValueAtTime(sustain, t + a + d + s);
         env.gain.linearRampToValueAtTime(0, t + a + d + s + r);
         return env;
@@ -188,6 +188,14 @@ var HestiaAudio = module.exports = function() {
     // This does have an issue of overlapping notes... if a oscillator is already playing
     // should reuse it (can you cancel a stop command)?
     // Or do we want a concept of channels for this?    
+    // ^^ Reusing oscs stops two notes playing at once, but if multiple scheduled notes are
+    // pressed at once it messes with things
+    // that is, if you've scheduled a release and then try to play the note again during the release
+    // and the attack time is less than the remaining release time, the note will be off after the release
+    // ideally you'd cancel scheduled times just for the next x seconds... but cancelScheduledValues 
+    // can only cancel *all* value after a given time. If we want to reuse oscillators we'll need to 
+    // not schedule music on them all at once, or we'll need to separate notes for music playback compared
+    // to notes for SFX / direct input - again is this channels? I wish I knew what channels were lol 
     exports.playNote = function(octave, note, waveformIndex, duration, delay, envelope) {
         let freq = 0;
         if (octave >= 0 && octave < noteTable.length) {
@@ -205,8 +213,21 @@ var HestiaAudio = module.exports = function() {
         
         let t = audioContext.currentTime + delay + lookAhead; 
 
-        // Well you can't call start more than once, so make a new one every time!
-        let osc = audioContext.createOscillator();
+        let osc, env;
+        let cachedNodes = false;
+        if (oscList[octave][note]) {
+            cachedNodes = true;
+            osc = oscList[octave][note];
+            env = gainList[octave][note];
+        } else {
+            osc = audioContext.createOscillator();
+            osc.frequency.value = freq;
+            env = audioContext.createGain();
+        }
+        
+        // This will cause some wierdness with cached nodes and scheduled notes...
+        // We'd need to have a osc list per voice, although it's kinda cool switching
+        // waveform on the fly
         if (waveformIndex < waveforms.length) {
             osc.type = waveforms[waveformIndex];
         } else {
@@ -215,7 +236,6 @@ var HestiaAudio = module.exports = function() {
                 osc.setPeriodicWave(customWaveforms[customIndex]);
             }
         }
-        osc.frequency.value = freq;
         
         // Might be best to have separate functions for playing a sustained note 
         // and playing a defined length note, rather than using the arguements to figure it out.
@@ -226,7 +246,7 @@ var HestiaAudio = module.exports = function() {
         let durationSpecified = (duration !== undefined && duration > 0);
         let limitedDuration = (duration !== undefined && duration > 0) || (envelope && envelope.s !== undefined);
         
-        let env, attack = 0.01, decay = 0, sustain = 0, release = 0.01, sustainLevel = 1;
+        let attack = 0.01, decay = 0, sustain = 0, release = 0.01, sustainLevel = 1;
         if (envelope) { // example envelope format { a: 0.1, d: 0.2, s: 0.4, r: 0.2, sustain: 0.7 }  
             attack = envelope.a;
             decay = envelope.d;
@@ -248,30 +268,22 @@ var HestiaAudio = module.exports = function() {
         }
 
         if (limitedDuration) {
-            env = createADSRNode(t, attack, decay, sustain, release, sustainLevel);
+            env = createADSRNode(env, t, attack, decay, sustain, release, sustainLevel);
         } else if (sustainLevel < 1) {
-            env = createAttackDecayNode(t, attack, decay, sustainLevel);
+            env = createAttackDecayNode(env, t, attack, decay, sustainLevel);
         } else {
-            env = createAttackNode(t, attack);
+            env = createAttackNode(env, t, attack);
         }
         
-        osc.connect(env).connect(masterGainNode);
-        // Would like to check out tracker implementations to see if this is 
-        // how they do things or if there is anyway to reuse, nodes
-        // Maybe we could disconnect the node or leave it connected and let the gain node sort it out
-        
-        osc.start(t);
-        if (duration !== undefined && duration > 0) {
-            osc.stop(t + duration);
-            // Does stop also disconnect nodes? No, is this a problem? Maybe, I dunno!
-            // Trying to reuse nodes results in wierd behaviour when scheduling lots of notes.
-            // presumably because of gain.cancelScheduledValues ?
+        if (!cachedNodes) {
+            osc.connect(env).connect(masterGainNode);
+            
+            osc.start(t);
+    
+            oscList[octave][note] = osc;
+            gainList[octave][note] = env;
         }
-
-        oscList[octave][note] = osc;
-        gainList[octave][note] = env;
-        // If you scheulde more than one of the same note ^^ this tracking is wrong :D
-        // only noticable if they don't have limited duration though
+        
         return osc;
     };
     
@@ -285,7 +297,7 @@ var HestiaAudio = module.exports = function() {
                 }
                 env.gain.setValueAtTime(1, audioContext.currentTime + lookAhead);
                 env.gain.linearRampToValueAtTime(0, audioContext.currentTime + lookAhead + release);
-                osc.stop(audioContext.currentTime + lookAhead + release);
+                //osc.stop(audioContext.currentTime + lookAhead + release);
             }
         }
     };
