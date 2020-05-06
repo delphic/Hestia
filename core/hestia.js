@@ -244,7 +244,7 @@ var loadFont = Hestia.loadFont = function(config) {
         img.decode().then(function(){
             fonts[config.name] = Font.create({ "image": img, "config": config });
             if (!currentFont || config.default) {
-            	currentFont = config;     	
+            	currentFont = fonts[config.name];     	
             }
             lockCount -= 1;
         }).catch(function(error) {
