@@ -298,6 +298,9 @@ var HestiaAudio = module.exports = function() {
     exports.init = function(config) {
         noteTable = createNoteTable();
         
+        // It occurs to me we could have a master node per synth / instrument and then run them through FX / a mixer etc
+        // Probably more than is needed for Hestia.audio - but there's an argument this audio stuff should be a separate library
+        // the Hestia bit should be about "configurable levels of retro".
         masterGainNode = audioContext.createGain();
         masterGainNode.connect(audioContext.destination);
         masterGainNode.gain.value = 1;

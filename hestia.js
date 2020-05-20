@@ -265,6 +265,8 @@ var HestiaAudio = module.exports = function() {
         if (duration !== undefined && duration > 0) {
             osc.stop(t + duration);
             // Does stop also disconnect nodes? No, is this a problem? Maybe, I dunno!
+            // Trying to reuse nodes results in wierd behaviour when scheduling lots of notes.
+            // presumably because of gain.cancelScheduledValues ?
         }
 
         oscList[octave][note] = osc;
@@ -297,6 +299,9 @@ var HestiaAudio = module.exports = function() {
     exports.init = function(config) {
         noteTable = createNoteTable();
         
+        // It occurs to me we could have a master node per synth / instrument and then run them through FX / a mixer etc
+        // Probably more than is needed for Hestia.audio - but there's an argument this audio stuff should be a separate library
+        // the Hestia bit should be about "configurable levels of retro".
         masterGainNode = audioContext.createGain();
         masterGainNode.connect(audioContext.destination);
         masterGainNode.gain.value = 1;
@@ -543,7 +548,8 @@ Hestia.init = function(config) {
 
 Hestia.run = function() {
 	pause = false;
-	lastTime = 0;
+	lastTime = Date.now();
+	aheadTime = 0;
 	window.requestAnimationFrame(tick);	
 	if (hideCursor) {
 	    canvas.classList.add("hideCursor");
@@ -554,6 +560,7 @@ Hestia.step = function() {
 	pause = true;
 	lastTime = 0;
 	tick();
+	aheadTime = 0;
 };
 
 Hestia.stop = function() {
@@ -651,7 +658,7 @@ var loadFont = Hestia.loadFont = function(config) {
         img.decode().then(function(){
             fonts[config.name] = Font.create({ "image": img, "config": config });
             if (!currentFont || config.default) {
-            	currentFont = config;     	
+            	currentFont = fonts[config.name];     	
             }
             lockCount -= 1;
         }).catch(function(error) {
@@ -1019,16 +1026,15 @@ Hestia.frameTimes = function() {
 
 // Private Methods
 var frameTimes = [];
-var aheadTime = 0;
+var aheadTime = 500;
 var tick = function() {
 	if (lockCount === 0) {
 		elapsed = (Date.now() - lastTime);
-		// This is a hard clamp, but I think the way request animation frame works
-		// this can result in 'missed' frames, should probably keep an ahead timer
-		// which means can execute up to half a frame ahead?
-		if (ticks === 0 || elapsed > (500 + aheadTime) / tickRate) {
-			aheadTime = Math.min(500, elapsed - (1000 / tickRate));	
-			// ^^ Is this doing what you think it's doing? It seems to be working but the 500 is kinda suspect to me.
+		if (ticks === 0 || elapsed - aheadTime > (1000 / tickRate) - 8) {   // Allow up to 8ms ahead of ideal time, this to smooth out FF 60 fps
+			aheadTime = aheadTime + (1000 / tickRate) - elapsed;
+			if (elapsed > 2000 / tickRate) {
+			    aheadTime = 0;
+			}
 		    frameTimes[ticks%30] = elapsed;
 			lastTime = Date.now();
 			ticks++; 
@@ -1038,7 +1044,7 @@ var tick = function() {
 			input.update();
 		}		
 	} else {
-		lastTime = 0;
+		lastTime = Date.now();
 	}
 	if (!pause) {
 		window.requestAnimationFrame(tick);

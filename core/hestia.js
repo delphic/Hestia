@@ -136,7 +136,8 @@ Hestia.init = function(config) {
 
 Hestia.run = function() {
 	pause = false;
-	lastTime = 0;
+	lastTime = Date.now();
+	aheadTime = 0;
 	window.requestAnimationFrame(tick);	
 	if (hideCursor) {
 	    canvas.classList.add("hideCursor");
@@ -147,6 +148,7 @@ Hestia.step = function() {
 	pause = true;
 	lastTime = 0;
 	tick();
+	aheadTime = 0;
 };
 
 Hestia.stop = function() {
@@ -612,16 +614,12 @@ Hestia.frameTimes = function() {
 
 // Private Methods
 var frameTimes = [];
-var aheadTime = 0;
+var aheadTime = 500;
 var tick = function() {
 	if (lockCount === 0) {
 		elapsed = (Date.now() - lastTime);
-		// This is a hard clamp, but I think the way request animation frame works
-		// this can result in 'missed' frames, should probably keep an ahead timer
-		// which means can execute up to half a frame ahead?
-		if (ticks === 0 || elapsed > (500 + aheadTime) / tickRate) {
-			aheadTime = Math.min(500, elapsed - (1000 / tickRate));	
-			// ^^ Is this doing what you think it's doing? It seems to be working but the 500 is kinda suspect to me.
+		if (ticks === 0 || elapsed - aheadTime > (1000 / tickRate) - 8) {   // Allow up to 8ms ahead of ideal time, this is an attempt to smooth out FF 60 fps
+			aheadTime = aheadTime + (1000 / tickRate) - elapsed;
 		    frameTimes[ticks%30] = elapsed;
 			lastTime = Date.now();
 			ticks++; 
@@ -631,7 +629,7 @@ var tick = function() {
 			input.update();
 		}		
 	} else {
-		lastTime = 0;
+		lastTime = Date.now();
 	}
 	if (!pause) {
 		window.requestAnimationFrame(tick);
