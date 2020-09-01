@@ -20,8 +20,8 @@ var Font = require('./font.js');
 
 // init - expected config parameters:
 // 'canvas' the canvas html element to use with Hestia
-// 'width' canvas width in pixels, 
-// 'height' canvas height in pixels 
+// 'width' canvas width in pixels,
+// 'height' canvas height in pixels
 // 'pixelRatio' pixel display ratio
 // 'palette' path to palette JSON
 // 'font' object with path to fontSheet and config details
@@ -51,7 +51,7 @@ Hestia.init = function(config) {
 
     // Sprites are dependent on palette loads, so chain those
 	var continueLoading = function() {
-	    // Set Sprite Sheet 
+	    // Set Sprite Sheet
 	    if (config.spriteSheets) {
 	        for (let i = 0, l = config.spriteSheets.length; i < l; i++) {
 	            if (config.spriteSheets[i].path) {
@@ -78,7 +78,7 @@ Hestia.init = function(config) {
 	} else {
 		loadPalette("palettes/aseprite.json", continueLoading);
 	}
-	
+
 	// Set Font
     let loadingFonts = 0;
     if (config.fonts) {
@@ -93,7 +93,7 @@ Hestia.init = function(config) {
     	loadingFonts += 1;
         loadFont(config.font);
     }
-    
+
     if (loadingFonts === 0) {
     	// Could arguably bundle this data in font.js like we used to
     	loadFont({
@@ -129,7 +129,7 @@ Hestia.init = function(config) {
 
 	// Input
 	input.init(canvas, config.keys);
-	
+
 	// Audio
 	audio.init(config.audio);
 };
@@ -138,7 +138,7 @@ Hestia.run = function() {
 	pause = false;
 	lastTime = Date.now();
 	aheadTime = 0;
-	window.requestAnimationFrame(tick);	
+	window.requestAnimationFrame(tick);
 	if (hideCursor) {
 	    canvas.classList.add("hideCursor");
 	}
@@ -175,7 +175,7 @@ Hestia.tickCount = function() {
 };
 
 // Input Querying
-// Keeping the public API flat 
+// Keeping the public API flat
 Hestia.button = function(btn) {
 	return input.getKey(btn);
 };
@@ -216,8 +216,8 @@ var loadSpriteSheet = Hestia.loadSpriteSheet = function(id, path, spriteSize, se
 	// TODO: convert to support use of indexed image format
 	lockCount += 1;
 	let image = new Image();
-	fetch(path).then(function(response) { 
-		return response.blob(); 
+	fetch(path).then(function(response) {
+		return response.blob();
 	}).then(function(blob) {
 		image.src = URL.createObjectURL(blob);
 		image.decode().then(function() {
@@ -246,7 +246,7 @@ var loadFont = Hestia.loadFont = function(config) {
         img.decode().then(function(){
             fonts[config.name] = Font.create({ "image": img, "config": config });
             if (!currentFont || config.default) {
-            	currentFont = fonts[config.name];     	
+            	currentFont = fonts[config.name];
             }
             lockCount -= 1;
         }).catch(function(error) {
@@ -268,7 +268,7 @@ var loadPalette = Hestia.loadPalette = function(path, callback) {
 	    setPaletteIndex(0);
 		lockCount -= 1;
 		if (callback) { callback(); }
-	}).catch(function(error) { 
+	}).catch(function(error) {
 		console.log("Load Palette Failed: " + error.message);
 		lockCount -= 1;
 		if (callback) { callback(); }
@@ -284,7 +284,7 @@ var setPixel = Hestia.setPixel = function(x, y, c) {
 var fillRect = Hestia.fillRect = function(x, y, w, h, c) {
     setPaletteIndex(c);
     ctx.fillRect(x,y,w,h);
-}; 
+};
 
 var drawRect = Hestia.drawRect = function(x, y, w, h, c) {
     setPaletteIndex(c);
@@ -467,9 +467,9 @@ var drawText = Hestia.drawText = function(text, x, y, c) {
 				} else {
 					ctx.fillRect(x + offset + xOffset - (cw - 1), y + yOffset, cw, 1);
 					cw = 1;
-				}				
-				// Old method - was marginally faster in FF, but faster in chrome 
-				// FF has better performance in general so chrome needs the boost more 
+				}
+				// Old method - was marginally faster in FF, but faster in chrome
+				// FF has better performance in general so chrome needs the boost more
 				// ctx.fillRect(x + offset + xOffset, y + yOffset, 1, 1);
 			}
 		}
@@ -557,19 +557,19 @@ var generateLetterOutline = function(data, width, height) {
 			}
 			// Up Left
 			if (i === 0 || j === 0 || data[p-(width+1)] === 0) {
-				outlineData[(oi - 1) + (oj - 1) * owidth] = 1;				
+				outlineData[(oi - 1) + (oj - 1) * owidth] = 1;
 			}
 			// Up Right
 			if (i === width - 1|| j === 0 || data[p-(width-1)] === 0) {
-				outlineData[(oi + 1) + (oj - 1) * owidth] = 1;				
+				outlineData[(oi + 1) + (oj - 1) * owidth] = 1;
 			}
 			// Down Left
 			if (i === 0 || j === height-1 || data[p+(width-1)] === 0) {
-				outlineData[(oi - 1) + (oj + 1) * owidth] = 1;				
+				outlineData[(oi - 1) + (oj + 1) * owidth] = 1;
 			}
 			// Down Right
 			if (i === width - 1|| j === height-1 || data[p+(width+1)] === 0) {
-				outlineData[(oi + 1) + (oj + 1) * owidth] = 1;				
+				outlineData[(oi + 1) + (oj + 1) * owidth] = 1;
 			}
 		}
 	}
@@ -581,7 +581,7 @@ var measureText = Hestia.measureText = function(text) {
     if (currentFont.variableWidth) {
         for(var i = 0, l = text.length; i < l; i++) {
             var letter = text[i];
-            var letterData = currentFont[letter]; 
+            var letterData = currentFont[letter];
             if (letterData && letterData.width !== undefined) {
                 length += letterData.width + currentFont.spacing;
             } else {
@@ -619,15 +619,18 @@ var tick = function() {
 	if (lockCount === 0) {
 		elapsed = (Date.now() - lastTime);
 		if (ticks === 0 || elapsed - aheadTime > (1000 / tickRate) - 8) {   // Allow up to 8ms ahead of ideal time, this is an attempt to smooth out FF 60 fps
-			aheadTime = aheadTime + (1000 / tickRate) - elapsed;
-		    frameTimes[ticks%30] = elapsed;
+			aheadTime = clamp(-100, 100, aheadTime + (1000 / tickRate) - elapsed);
+			// ^^ Consider ignoring aheadTimes that are negative larger than ~frametime,
+			// i.e. let outlying slow frames happen rather than rushing to catchup
+			// Also consider 0-ing aheadTime in this case.
+	    frameTimes[ticks%30] = elapsed;
 			lastTime = Date.now();
-			ticks++; 
-			
+			ticks++;
+
 			Hestia.update();
 			Hestia.draw();
 			input.update();
-		}		
+		}
 	} else {
 		lastTime = Date.now();
 	}
@@ -635,6 +638,14 @@ var tick = function() {
 		window.requestAnimationFrame(tick);
 	}
 };
+
+var clamp = function(min, max, value) {
+		return Math.min(max, Math.max(min, value));
+};
+
+var clamp01 = function(value) {
+	return Math.min(1, Math.max(0, value));
+}
 
 var setPaletteIndex = function(c) {
 	if (paletteIndex != c && c >= 0 && c <= palette.length) {
