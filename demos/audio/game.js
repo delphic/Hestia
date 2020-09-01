@@ -181,7 +181,7 @@ var Key = (function(){
 
 var keys = [];
 var keyDownCount = 0;
-var ffviiButton;
+var ffviiButton, sfxButton;
 
 // TODO:
 /*
@@ -250,7 +250,24 @@ var init = function() {
         color: 18,
         pressedColor: 17,
         textColor: 21,
-        borderColor: 14,
+        borderColor: 14
+    });
+    
+    sfxButton = Button.create({
+        x: 64+8,
+        y: 72 + 16,
+        width: 32,
+        height: 16,
+        buttonDown: function(button) {
+            playSFX();
+        },
+        text: "SFX",
+        tx: 2,
+        ty: 2,
+        color: 18,
+        pressedColor: 17,
+        textColor: 21,
+        borderColor: 14
     });
 };
 
@@ -332,6 +349,15 @@ let playFF7Theme = function() {
     }
 };
 
+let playSFX = function() {
+    var octaves = [ 5,      1,      1,      1,      1,      1,      1,      1,      1,      1,      1,      1,      1,      5,      5,      5,      5,      5,      5,      5,      5,      5,      5,      5,      5 ];
+    var notes = [   "B",    "C",    "C#",   "D",    "D#",   "E",    "F",    "F#",   "G",    "G#",   "A",    "A#",   "B",    "C",    "C#",   "D",    "D#",   "E",    "F",    "F#",   "G",    "G#",   "A",    "A#",   "B" ];
+    var fx = [];
+    fx.length = notes.length;
+    fx.fill(1);
+    Hestia.audio.playSFX(octaves, notes, fx, waveform, 32);
+};
+
 var update = function() {
     HestiaDebug.update();
     for (let i = 0, l = keys.length; i < l; i++) {
@@ -350,6 +376,7 @@ var update = function() {
         Key.setWaveform(waveform);
     }
     ffviiButton.update();
+    sfxButton.update();
 };
 
 var playErrorTone = function() {
@@ -372,6 +399,7 @@ var draw = function() {
         keys[i].draw();
     }
     ffviiButton.draw();
+    sfxButton.draw();
 	HestiaDebug.draw(config.width-32, 0, 15, 0);
 	drawCursor();
 };

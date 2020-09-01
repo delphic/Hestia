@@ -41,10 +41,15 @@ var HestiaAudio = module.exports = function() {
             noteFreq[i] = [];
         }
         
-        // Is this a common limitation on 0, and 8th octaves?
-        // I presume it's a piano thing
-        // 88 notes here (12 per full ocative)
-        
+        noteFreq[0]["C"] = 16.35;
+        noteFreq[0]["C#"] = 17.32;
+        noteFreq[0]["D"] = 18.35;
+        noteFreq[0]["D#"] = 19.45;
+        noteFreq[0]["E"] = 20.60;
+        noteFreq[0]["F"] = 21.83;
+        noteFreq[0]["F#"] = 23.12;
+        noteFreq[0]["G"] = 24.50;
+        noteFreq[0]["G#"] = 25.96;
         noteFreq[0]["A"] = 27.500000000000000;
         noteFreq[0]["A#"] = 29.135235094880619;
         noteFreq[0]["B"] = 30.867706328507756;
@@ -141,6 +146,18 @@ var HestiaAudio = module.exports = function() {
         noteFreq[7]["B"] = 3951.066410048992894;
         
         noteFreq[8]["C"] = 4186.009044809578154;
+        noteFreq[8]["C#"] = 4434.92;
+        noteFreq[8]["D"] = 4698.63;
+        noteFreq[8]["D#"] = 4978.03;
+        noteFreq[8]["E"] = 5274.04;
+        noteFreq[8]["F"] = 5587.65;
+        noteFreq[8]["F#"] = 5919.91;
+        noteFreq[8]["G"] = 6271.93;
+        noteFreq[8]["G#"] = 6644.88;
+        noteFreq[8]["A"] = 7040.00;
+        noteFreq[8]["A#"] = 7458.62;
+        noteFreq[8]["B"] = 7902.13;
+
         return noteFreq;
     };
 
@@ -184,6 +201,37 @@ var HestiaAudio = module.exports = function() {
         env.gain.setValueAtTime(sustain, t + a + d + s);
         env.gain.linearRampToValueAtTime(0, t + a + d + s + r);
         return env;
+    };
+    
+    exports.playSFX = function(octaves, notes, fx, waveformIndex, speed) { // In order to support multiple wave forms will need to make multiple nodes and update the gain appropriately for each appropriately
+        let t = audioContext.currentTime + lookAhead;
+        let osc = audioContext.createOscillator();
+        let noteSeparation = speed/1000.0;
+
+        if (waveformIndex < waveforms.length) {
+            osc.type = waveforms[waveformIndex];
+        } else {
+            let customIndex = waveformIndex - waveforms.length;
+            if (customIndex < customWaveforms.length) {
+                osc.setPeriodicWave(customWaveforms[customIndex]);
+            }
+        }
+        
+        for (let i = 0, l = notes.length; i < l; i++) {
+            var freq = noteTable[octaves[i]][notes[i]];
+            if (fx[i] !== 1) {
+                osc.frequency.setValueAtTime(freq, t + i * noteSeparation);
+            } else {
+                osc.frequency.linearRampToValueAtTime(freq, t + i * noteSeparation);
+            }
+        }
+        // Might be good to still have an envelope 
+        osc/*.connect(env)*/.connect(masterGainNode);
+
+        osc.start(t);
+        osc.stop(t + noteSeparation * notes.length);
+
+        return osc;
     };
 
     // This does have an issue of overlapping notes... if a oscillator is already playing
@@ -1030,11 +1078,8 @@ var aheadTime = 500;
 var tick = function() {
 	if (lockCount === 0) {
 		elapsed = (Date.now() - lastTime);
-		if (ticks === 0 || elapsed - aheadTime > (1000 / tickRate) - 8) {   // Allow up to 8ms ahead of ideal time, this to smooth out FF 60 fps
+		if (ticks === 0 || elapsed - aheadTime > (1000 / tickRate) - 8) {   // Allow up to 8ms ahead of ideal time, this is an attempt to smooth out FF 60 fps
 			aheadTime = aheadTime + (1000 / tickRate) - elapsed;
-			if (elapsed > 2000 / tickRate) {
-			    aheadTime = 0;
-			}
 		    frameTimes[ticks%30] = elapsed;
 			lastTime = Date.now();
 			ticks++; 
